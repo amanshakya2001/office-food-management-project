@@ -1,0 +1,692 @@
+{
+  "info": {
+    "name": "Splitwise — Office Food Manager",
+    "description": "Complete Postman collection for the Office Food Manager app.\n\n## Setup\n1. Create an app at https://secure.splitwise.com/oauth_clients\n2. Set your `consumer_key`, `consumer_secret`, and `access_token` in the collection Variables tab.\n3. Run **Auth → Get Current User** first to verify your token works.\n4. Run **Settings Setup** folder to find your group ID and map people.\n5. Use **Daily Flow** folder for day-to-day expense operations.\n\n## Auth\nSplitwise supports OAuth 2.0. For personal/dev use the simplest method is an API Key — generate one at https://secure.splitwise.com/api/v3.0/get_current_user after logging in, or register an OAuth2 app and exchange a code for a Bearer token.\n\nAll requests use: `Authorization: Bearer {{access_token}}`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "office-food-manager-splitwise-v1"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://secure.splitwise.com/api/v3.0",
+      "type": "string",
+      "description": "Splitwise API base URL — do not change"
+    },
+    {
+      "key": "access_token",
+      "value": "PASTE_YOUR_ACCESS_TOKEN_HERE",
+      "type": "string",
+      "description": "OAuth2 Bearer token OR API key. Get from https://secure.splitwise.com/oauth_clients"
+    },
+    {
+      "key": "consumer_key",
+      "value": "PASTE_YOUR_CONSUMER_KEY_HERE",
+      "type": "string",
+      "description": "OAuth2 consumer key from your registered app"
+    },
+    {
+      "key": "consumer_secret",
+      "value": "PASTE_YOUR_CONSUMER_SECRET_HERE",
+      "type": "string",
+      "description": "OAuth2 consumer secret from your registered app"
+    },
+    {
+      "key": "group_id",
+      "value": "",
+      "type": "string",
+      "description": "Splitwise group ID for 'Office Lunch Group'. Set after running GET /get_groups."
+    },
+    {
+      "key": "expense_id",
+      "value": "",
+      "type": "string",
+      "description": "Splitwise expense ID returned after POST /create_expense. Used for update/delete."
+    },
+    {
+      "key": "current_user_id",
+      "value": "",
+      "type": "string",
+      "description": "Your Splitwise user ID. Set after running GET /get_current_user."
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Auth & Identity",
+      "description": "Verify authentication and get your user identity. Run these first.",
+      "item": [
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/get_current_user",
+              "host": ["{{base_url}}"],
+              "path": ["get_current_user"]
+            },
+            "description": "Verify your access token is working. Returns your Splitwise user profile.\n\n✅ After running: Copy the `id` field from the response and save it as `current_user_id` in collection variables."
+          },
+          "response": [
+            {
+              "name": "200 OK — Success",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"user\": {\n    \"id\": 12345678,\n    \"first_name\": \"Amit\",\n    \"last_name\": \"Sharma\",\n    \"email\": \"amit.sharma@gmail.com\",\n    \"registration_status\": \"confirmed\",\n    \"picture\": {\n      \"small\": \"https://splitwise.com/images/avatar-small.png\",\n      \"medium\": \"https://splitwise.com/images/avatar-medium.png\",\n      \"large\": \"https://splitwise.com/images/avatar-large.png\"\n    },\n    \"custom_picture\": false,\n    \"notifications_read\": \"2025-04-24T00:00:00Z\",\n    \"notifications_count\": 0,\n    \"notifications\": {\n      \"added_as_friend\": true,\n      \"added_to_group\": true,\n      \"expense_added\": true,\n      \"expense_updated\": true,\n      \"bills\": true,\n      \"payments\": true,\n      \"monthly_summary\": true,\n      \"announcements\": true\n    },\n    \"default_currency\": \"INR\",\n    \"locale\": \"en\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "OAuth2 — Get Authorize URL (reference)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://www.splitwise.com/oauth/authorize?response_type=code&client_id={{consumer_key}}&redirect_uri=YOUR_REDIRECT_URI",
+              "host": ["https://www.splitwise.com"],
+              "path": ["oauth", "authorize"],
+              "query": [
+                { "key": "response_type", "value": "code" },
+                { "key": "client_id", "value": "{{consumer_key}}" },
+                { "key": "redirect_uri", "value": "YOUR_REDIRECT_URI", "description": "Must match what you registered at secure.splitwise.com/oauth_clients" }
+              ]
+            },
+            "description": "Step 1 of OAuth2 flow — redirect the user to this URL in a browser/WebView.\n\nThe user logs in and approves your app. Splitwise redirects back to your redirect_uri with `?code=XXXX&state=YYYY`.\n\nFor React Native, use expo-auth-session or react-native-app-auth to handle this flow."
+          },
+          "response": []
+        },
+        {
+          "name": "OAuth2 — Exchange Code for Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "authorization_code", "description": "Always this value" },
+                { "key": "client_id", "value": "{{consumer_key}}" },
+                { "key": "client_secret", "value": "{{consumer_secret}}" },
+                { "key": "code", "value": "CODE_FROM_REDIRECT", "description": "The `code` param from the OAuth redirect callback" },
+                { "key": "redirect_uri", "value": "YOUR_REDIRECT_URI", "description": "Must exactly match the registered redirect URI" }
+              ]
+            },
+            "url": {
+              "raw": "https://www.splitwise.com/oauth/token",
+              "host": ["https://www.splitwise.com"],
+              "path": ["oauth", "token"]
+            },
+            "description": "Step 2 of OAuth2 flow — exchange the authorization code for an access token.\n\nStore the returned `access_token` securely on the device (e.g. react-native-keychain). Use it as the Bearer token for all subsequent requests.\n\n⚠️ The access token does not expire unless the user explicitly revokes it."
+          },
+          "response": [
+            {
+              "name": "200 OK — Token Issued",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"access_token\": \"your_access_token_here\",\n  \"token_type\": \"Bearer\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Settings Setup",
+      "description": "Run these once during app setup to configure the Splitwise group and map people. Results are stored in app Settings (SQLite).",
+      "item": [
+        {
+          "name": "Get All Groups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/get_groups",
+              "host": ["{{base_url}}"],
+              "path": ["get_groups"]
+            },
+            "description": "Fetch all Splitwise groups the current user belongs to.\n\n✅ After running: Find your 'Office Lunch Group' in the response. Copy its `id` and save it as the `group_id` collection variable and also persist in app Settings."
+          },
+          "response": [
+            {
+              "name": "200 OK — Groups List",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"groups\": [\n    {\n      \"id\": 98765432,\n      \"name\": \"Office Lunch Group\",\n      \"group_type\": \"office\",\n      \"updated_at\": \"2025-04-24T10:00:00Z\",\n      \"simplify_by_default\": false,\n      \"members\": [\n        {\n          \"id\": 12345678,\n          \"first_name\": \"Amit\",\n          \"last_name\": \"Sharma\",\n          \"email\": \"amit.sharma@gmail.com\",\n          \"balance\": [{ \"currency_code\": \"INR\", \"amount\": \"0.0\" }]\n        },\n        {\n          \"id\": 22345678,\n          \"first_name\": \"Priya\",\n          \"last_name\": \"Singh\",\n          \"email\": \"priya.singh@gmail.com\",\n          \"balance\": [{ \"currency_code\": \"INR\", \"amount\": \"-80.0\" }]\n        },\n        {\n          \"id\": 32345678,\n          \"first_name\": \"Neha\",\n          \"last_name\": \"Gupta\",\n          \"email\": \"neha.gupta@gmail.com\",\n          \"balance\": [{ \"currency_code\": \"INR\", \"amount\": \"-80.0\" }]\n        }\n      ],\n      \"original_debts\": [],\n      \"simplified_debts\": [],\n      \"avatar\": { \"small\": null, \"medium\": null, \"large\": null },\n      \"custom_avatar\": false,\n      \"cover_photo\": { \"xxlarge\": null, \"xlarge\": null }\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Single Group (with Members)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/get_group/{{group_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["get_group", "{{group_id}}"]
+            },
+            "description": "Fetch details of your configured office lunch group, including the full members list.\n\n✅ Use this to build the Person → Splitwise User mapping in Settings. Each member's `id` is what you store as `splitwise_user_id` in the Person table."
+          },
+          "response": [
+            {
+              "name": "200 OK — Group Detail",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"group\": {\n    \"id\": 98765432,\n    \"name\": \"Office Lunch Group\",\n    \"group_type\": \"office\",\n    \"members\": [\n      {\n        \"id\": 12345678,\n        \"first_name\": \"Amit\",\n        \"last_name\": \"Sharma\",\n        \"email\": \"amit.sharma@gmail.com\"\n      },\n      {\n        \"id\": 22345678,\n        \"first_name\": \"Priya\",\n        \"last_name\": \"Singh\",\n        \"email\": \"priya.singh@gmail.com\"\n      },\n      {\n        \"id\": 32345678,\n        \"first_name\": \"Neha\",\n        \"last_name\": \"Gupta\",\n        \"email\": \"neha.gupta@gmail.com\"\n      },\n      {\n        \"id\": 42345678,\n        \"first_name\": \"Vikram\",\n        \"last_name\": \"Joshi\",\n        \"email\": \"vikram.joshi@gmail.com\"\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Friends List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/get_friends",
+              "host": ["{{base_url}}"],
+              "path": ["get_friends"]
+            },
+            "description": "Fetch all Splitwise friends of the current user.\n\nAlternative to Get Group if colleagues are friends but not in a formal group. Contains `id`, `first_name`, `last_name`, and `email` for each friend — use these for person mapping."
+          },
+          "response": [
+            {
+              "name": "200 OK — Friends List",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"friends\": [\n    {\n      \"id\": 22345678,\n      \"first_name\": \"Priya\",\n      \"last_name\": \"Singh\",\n      \"email\": \"priya.singh@gmail.com\",\n      \"balance\": [\n        { \"currency_code\": \"INR\", \"amount\": \"-80.0\" }\n      ]\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Daily Flow — Expenses",
+      "description": "The core day-to-day operations. Use these once Rahul Bhaiya confirms the total cost.",
+      "item": [
+        {
+          "name": "Create Expense (First Sync)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "cost",
+                  "value": "560.00",
+                  "description": "Total daily cost as a string with 2 decimal places. e.g. '560.00'"
+                },
+                {
+                  "key": "description",
+                  "value": "Office Food — 24 Apr 2025",
+                  "description": "Format: 'Office Food — DD MMM YYYY'. Auto-generated by the app."
+                },
+                {
+                  "key": "date",
+                  "value": "2025-04-24T00:00:00Z",
+                  "description": "ISO 8601 date of the expense. Corresponds to the day entry date."
+                },
+                {
+                  "key": "currency_code",
+                  "value": "INR",
+                  "description": "Always INR for this app."
+                },
+                {
+                  "key": "group_id",
+                  "value": "{{group_id}}",
+                  "description": "The configured Office Lunch Group ID from Settings."
+                },
+                {
+                  "key": "split_equally",
+                  "value": "false",
+                  "description": "MUST be false — we pass explicit paid_share and owed_share per user to support custom payer."
+                },
+                {
+                  "key": "users__0__user_id",
+                  "value": "12345678",
+                  "description": "Splitwise user ID of person 0 (the PAYER). Replace with actual splitwise_user_id."
+                },
+                {
+                  "key": "users__0__paid_share",
+                  "value": "560.00",
+                  "description": "Payer paid the FULL amount."
+                },
+                {
+                  "key": "users__0__owed_share",
+                  "value": "80.00",
+                  "description": "Payer's own equal share (total / number of people). 560 / 7 = 80.00"
+                },
+                {
+                  "key": "users__1__user_id",
+                  "value": "22345678",
+                  "description": "Splitwise user ID of person 1. Replace with actual splitwise_user_id."
+                },
+                {
+                  "key": "users__1__paid_share",
+                  "value": "0.00",
+                  "description": "Non-payers paid nothing."
+                },
+                {
+                  "key": "users__1__owed_share",
+                  "value": "80.00",
+                  "description": "Equal share for this person."
+                },
+                {
+                  "key": "users__2__user_id",
+                  "value": "32345678",
+                  "description": "Person 2 Splitwise user ID."
+                },
+                {
+                  "key": "users__2__paid_share",
+                  "value": "0.00"
+                },
+                {
+                  "key": "users__2__owed_share",
+                  "value": "80.00"
+                },
+                {
+                  "key": "users__3__user_id",
+                  "value": "42345678",
+                  "description": "Person 3 Splitwise user ID."
+                },
+                {
+                  "key": "users__3__paid_share",
+                  "value": "0.00"
+                },
+                {
+                  "key": "users__3__owed_share",
+                  "value": "80.00"
+                },
+                {
+                  "key": "users__4__user_id",
+                  "value": "52345678",
+                  "description": "Person 4 Splitwise user ID."
+                },
+                {
+                  "key": "users__4__paid_share",
+                  "value": "0.00"
+                },
+                {
+                  "key": "users__4__owed_share",
+                  "value": "80.00"
+                },
+                {
+                  "key": "users__5__user_id",
+                  "value": "62345678",
+                  "description": "Person 5 Splitwise user ID."
+                },
+                {
+                  "key": "users__5__paid_share",
+                  "value": "0.00"
+                },
+                {
+                  "key": "users__5__owed_share",
+                  "value": "80.00"
+                },
+                {
+                  "key": "users__6__user_id",
+                  "value": "72345678",
+                  "description": "Person 6 Splitwise user ID."
+                },
+                {
+                  "key": "users__6__paid_share",
+                  "value": "0.00"
+                },
+                {
+                  "key": "users__6__owed_share",
+                  "value": "80.00"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/create_expense",
+              "host": ["{{base_url}}"],
+              "path": ["create_expense"]
+            },
+            "description": "## Create a new expense — use on FIRST sync for a day.\n\n### Split Logic\n- `split_equally` = false — always pass explicit shares\n- Payer: `paid_share` = total_cost, `owed_share` = total_cost / num_people\n- All others: `paid_share` = 0.00, `owed_share` = total_cost / num_people\n- Users array is zero-indexed: users__0__, users__1__, etc.\n- Only include people who have a meal entry for that day\n\n### Important: Validation Check\nsum(all owed_shares) must equal sum(all paid_shares) = cost\nIn this example: 7 people × ₹80 = ₹560 ✓\n\n### After Running\n✅ Copy the `expenses[0].id` from the response and save as `splitwise_expense_id` in the local DayEntry record. Set `splitwise_synced = true`."
+          },
+          "response": [
+            {
+              "name": "200 OK — Expense Created",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"expenses\": [\n    {\n      \"id\": 1987654321,\n      \"group_id\": 98765432,\n      \"description\": \"Office Food — 24 Apr 2025\",\n      \"cost\": \"560.0\",\n      \"currency_code\": \"INR\",\n      \"date\": \"2025-04-24T00:00:00Z\",\n      \"created_at\": \"2025-04-24T12:30:00Z\",\n      \"updated_at\": \"2025-04-24T12:30:00Z\",\n      \"deleted_at\": null,\n      \"payment\": false,\n      \"transaction_confirmed\": false,\n      \"repayments\": [\n        { \"from\": 22345678, \"to\": 12345678, \"amount\": \"80.0\" },\n        { \"from\": 32345678, \"to\": 12345678, \"amount\": \"80.0\" },\n        { \"from\": 42345678, \"to\": 12345678, \"amount\": \"80.0\" },\n        { \"from\": 52345678, \"to\": 12345678, \"amount\": \"80.0\" },\n        { \"from\": 62345678, \"to\": 12345678, \"amount\": \"80.0\" },\n        { \"from\": 72345678, \"to\": 12345678, \"amount\": \"80.0\" }\n      ],\n      \"users\": [\n        { \"user_id\": 12345678, \"paid_share\": \"560.0\", \"owed_share\": \"80.0\", \"net_balance\": \"480.0\" },\n        { \"user_id\": 22345678, \"paid_share\": \"0.0\", \"owed_share\": \"80.0\", \"net_balance\": \"-80.0\" },\n        { \"user_id\": 32345678, \"paid_share\": \"0.0\", \"owed_share\": \"80.0\", \"net_balance\": \"-80.0\" },\n        { \"user_id\": 42345678, \"paid_share\": \"0.0\", \"owed_share\": \"80.0\", \"net_balance\": \"-80.0\" },\n        { \"user_id\": 52345678, \"paid_share\": \"0.0\", \"owed_share\": \"80.0\", \"net_balance\": \"-80.0\" },\n        { \"user_id\": 62345678, \"paid_share\": \"0.0\", \"owed_share\": \"80.0\", \"net_balance\": \"-80.0\" },\n        { \"user_id\": 72345678, \"paid_share\": \"0.0\", \"owed_share\": \"80.0\", \"net_balance\": \"-80.0\" }\n      ],\n      \"created_by\": { \"id\": 12345678, \"first_name\": \"Amit\", \"last_name\": \"Sharma\" }\n    }\n  ],\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "200 — Validation Error (shares don't balance)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"expenses\": [],\n  \"errors\": {\n    \"base\": [\"The shares do not add up to the total cost\"]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Expense (Re-sync)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "cost",
+                  "value": "640.00",
+                  "description": "Updated total cost (e.g. Rahul Bhaiya corrected the amount)."
+                },
+                {
+                  "key": "description",
+                  "value": "Office Food — 24 Apr 2025",
+                  "description": "Same description — no change needed."
+                },
+                {
+                  "key": "date",
+                  "value": "2025-04-24T00:00:00Z"
+                },
+                {
+                  "key": "currency_code",
+                  "value": "INR"
+                },
+                {
+                  "key": "group_id",
+                  "value": "{{group_id}}"
+                },
+                {
+                  "key": "split_equally",
+                  "value": "false"
+                },
+                {
+                  "key": "users__0__user_id",
+                  "value": "12345678",
+                  "description": "Payer — could be different from original if 'Paid By' was changed."
+                },
+                {
+                  "key": "users__0__paid_share",
+                  "value": "640.00",
+                  "description": "Updated full amount."
+                },
+                {
+                  "key": "users__0__owed_share",
+                  "value": "91.43",
+                  "description": "640 / 7 = 91.43"
+                },
+                {
+                  "key": "users__1__user_id",
+                  "value": "22345678"
+                },
+                {
+                  "key": "users__1__paid_share",
+                  "value": "0.00"
+                },
+                {
+                  "key": "users__1__owed_share",
+                  "value": "91.43"
+                },
+                {
+                  "key": "users__2__user_id",
+                  "value": "32345678"
+                },
+                {
+                  "key": "users__2__paid_share",
+                  "value": "0.00"
+                },
+                {
+                  "key": "users__2__owed_share",
+                  "value": "91.43"
+                },
+                {
+                  "key": "users__3__user_id",
+                  "value": "42345678"
+                },
+                {
+                  "key": "users__3__paid_share",
+                  "value": "0.00"
+                },
+                {
+                  "key": "users__3__owed_share",
+                  "value": "91.43"
+                },
+                {
+                  "key": "users__4__user_id",
+                  "value": "52345678"
+                },
+                {
+                  "key": "users__4__paid_share",
+                  "value": "0.00"
+                },
+                {
+                  "key": "users__4__owed_share",
+                  "value": "91.43"
+                },
+                {
+                  "key": "users__5__user_id",
+                  "value": "62345678"
+                },
+                {
+                  "key": "users__5__paid_share",
+                  "value": "0.00"
+                },
+                {
+                  "key": "users__5__owed_share",
+                  "value": "91.43"
+                },
+                {
+                  "key": "users__6__user_id",
+                  "value": "72345678"
+                },
+                {
+                  "key": "users__6__paid_share",
+                  "value": "0.00"
+                },
+                {
+                  "key": "users__6__owed_share",
+                  "value": "91.42",
+                  "description": "Last person absorbs the rounding remainder: 640 - (91.43 × 6) = 91.42"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/update_expense/{{expense_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["update_expense", "{{expense_id}}"]
+            },
+            "description": "## Update an existing expense — use when cost or payer changes after first sync.\n\nUses the `splitwise_expense_id` stored locally in the DayEntry record. This prevents duplicate expenses on Splitwise.\n\n### When to use\n- User edits the total cost after it was already synced\n- User changes 'Paid By' person after it was already synced\n\n### Rounding Note\nWhen total cost doesn't divide evenly, give the remainder to the last user (or the payer). Ensure sum of all owed_shares = cost exactly.\n\n### After Running\n✅ No new `splitwise_expense_id` needed — it's the same expense, just updated."
+          },
+          "response": [
+            {
+              "name": "200 OK — Expense Updated",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"expense\": {\n    \"id\": 1987654321,\n    \"description\": \"Office Food — 24 Apr 2025\",\n    \"cost\": \"640.0\",\n    \"currency_code\": \"INR\",\n    \"updated_at\": \"2025-04-25T09:00:00Z\",\n    \"users\": [\n      { \"user_id\": 12345678, \"paid_share\": \"640.0\", \"owed_share\": \"91.43\", \"net_balance\": \"548.57\" },\n      { \"user_id\": 22345678, \"paid_share\": \"0.0\", \"owed_share\": \"91.43\", \"net_balance\": \"-91.43\" }\n    ]\n  },\n  \"errors\": {}\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Expense (Verify Sync)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/get_expense/{{expense_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["get_expense", "{{expense_id}}"]
+            },
+            "description": "Fetch a specific expense by its ID to verify it was created/updated correctly.\n\nUseful for debugging sync issues or confirming data on Splitwise matches the local app record."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"expense\": {\n    \"id\": 1987654321,\n    \"group_id\": 98765432,\n    \"description\": \"Office Food — 24 Apr 2025\",\n    \"cost\": \"560.0\",\n    \"currency_code\": \"INR\",\n    \"date\": \"2025-04-24T00:00:00Z\",\n    \"deleted_at\": null,\n    \"users\": [\n      { \"user_id\": 12345678, \"paid_share\": \"560.0\", \"owed_share\": \"80.0\", \"net_balance\": \"480.0\" },\n      { \"user_id\": 22345678, \"paid_share\": \"0.0\", \"owed_share\": \"80.0\", \"net_balance\": \"-80.0\" }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Group Expenses (List)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/get_expenses?group_id={{group_id}}&limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["get_expenses"],
+              "query": [
+                { "key": "group_id", "value": "{{group_id}}", "description": "Filter by your office lunch group" },
+                { "key": "limit", "value": "20", "description": "Number of results per page (max 20 recommended)" },
+                { "key": "offset", "value": "0", "description": "Pagination offset" },
+                { "key": "dated_after", "value": "2025-04-01T00:00:00Z", "description": "Optional: filter expenses after this date", "disabled": true },
+                { "key": "dated_before", "value": "2025-04-30T23:59:59Z", "description": "Optional: filter expenses before this date", "disabled": true }
+              ]
+            },
+            "description": "List expenses in the group. Useful for:\n- Auditing what has been synced\n- Checking for duplicate entries\n- Reconciling the CSV export against Splitwise"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Expense",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/delete_expense/{{expense_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["delete_expense", "{{expense_id}}"]
+            },
+            "description": "Delete an expense from Splitwise.\n\n⚠️ Use with caution — prefer Update over Delete. Only use if a day entry needs to be completely removed from Splitwise.\n\nAfter calling this, set `splitwise_synced = false` and `splitwise_expense_id = null` in the local DayEntry record."
+          },
+          "response": [
+            {
+              "name": "200 OK — Deleted",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Reference",
+      "description": "Utility endpoints for troubleshooting, validation, and reference data.",
+      "item": [
+        {
+          "name": "Get Currencies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/get_currencies",
+              "host": ["{{base_url}}"],
+              "path": ["get_currencies"]
+            },
+            "description": "Returns all currencies supported by Splitwise. Confirm `INR` is available (it is).\n\nNot needed in app flow — for reference only."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/get_user/{{current_user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["get_user", "{{current_user_id}}"]
+            },
+            "description": "Get profile details for a specific user by their Splitwise user ID.\n\nUseful for validating person-to-Splitwise mapping during Settings setup."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/get_notifications",
+              "host": ["{{base_url}}"],
+              "path": ["get_notifications"]
+            },
+            "description": "Returns recent Splitwise activity notifications for the current user. Not used in core app flow."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-inject Authorization header for all requests",
+          "// No action needed — Bearer auth is set at the collection level"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test: flag any non-200 responses",
+          "pm.test('Status is 200', function () {",
+          "    pm.response.to.have.status(200);",
+          "});",
+          "",
+          "// Global test: check for Splitwise errors object in response",
+          "try {",
+          "    const json = pm.response.json();",
+          "    if (json.errors && Object.keys(json.errors).length > 0) {",
+          "        pm.test('No Splitwise errors', function () {",
+          "            pm.expect(Object.keys(json.errors).length).to.equal(0, JSON.stringify(json.errors));",
+          "        });",
+          "    }",
+          "} catch (e) {}",
+          "",
+          "// Auto-save expense_id after create_expense",
+          "try {",
+          "    const json = pm.response.json();",
+          "    if (json.expenses && json.expenses.length > 0 && json.expenses[0].id) {",
+          "        pm.collectionVariables.set('expense_id', json.expenses[0].id);",
+          "        console.log('expense_id saved:', json.expenses[0].id);",
+          "    }",
+          "} catch (e) {}",
+          "",
+          "// Auto-save current_user_id after get_current_user",
+          "try {",
+          "    const json = pm.response.json();",
+          "    if (json.user && json.user.id) {",
+          "        pm.collectionVariables.set('current_user_id', json.user.id);",
+          "        console.log('current_user_id saved:', json.user.id);",
+          "    }",
+          "} catch (e) {}"
+        ]
+      }
+    }
+  ]
+}

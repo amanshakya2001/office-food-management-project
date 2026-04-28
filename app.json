@@ -1,30 +1,43 @@
 {
   "expo": {
-    "name": "office-food-manager",
+    "name": "Office Food Manager",
     "slug": "office-food-manager",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "scheme": "officefood",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0F0E0C"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.officefood.manager"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#E8A020"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.officefood.manager"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-sharing",
+      "expo-web-browser",
+      "expo-secure-store",
+      "expo-font"
+    ],
+    "extra": {
+      "splitwiseClientId": "f3axRU1AA75AlDkSzu9RERsbeSlRNSevc2lfdPy2",
+      "splitwiseClientSecret": "YDV2xVmdz9q6YorlJznCyfuN1WOKIk2jV6h942mP"
     }
   }
 }

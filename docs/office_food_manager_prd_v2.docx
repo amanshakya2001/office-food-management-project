@@ -1,0 +1,302 @@
+**Office Food Manager**
+
+Product Requirements Document
+
+Version 2.0  |  April 2025
+
+| **App Name** | Office Food Manager |
+| --- | --- |
+| **Platform** | Android (React Native) |
+| **Storage** | Local device only — SQLite, no backend, no cloud |
+| **Author** | Internal / Personal Use |
+| **Version** | 2.0 |
+| **Date** | April 2025 |
+| **Status** | Draft — Updated |
+
+# **1. Overview**
+
+Office Food Manager is a personal Android app (built in React Native) that tracks daily office meal entries for a group of colleagues, records the total cost once received from the mess owner, calculates equal cost splits, generates WhatsApp-ready messages, exports data as CSV, and syncs settled expenses directly to Splitwise. All data is stored locally on the device using SQLite — no backend or internet connection is required except for Splitwise sync.
+
+# **2. Goals ****&**** Objectives**
+
+- Maintain a list of people (name + phone number) for whom food is tracked daily.
+
+- Log free-text daily meal entries per person with a full date (DD MMM YYYY).
+
+- Record who paid the bill for a given day to correctly attribute expenses in Splitwise.
+
+- Automatically calculate each person's equal share of the daily cost.
+
+- Generate and share a WhatsApp message with the day's food orders to Rahul Bhaiya.
+
+- Sync expenses to a pre-configured Splitwise group, updating existing entries instead of creating duplicates.
+
+- Export meal and cost data as CSV for a user-defined date range.
+
+- Keep all core functionality offline — internet only needed for Splitwise sync.
+
+# **3. Target Users**
+
+This is a single-user personal Android app. The user manages daily food orders for a group of office colleagues, collects the total cost from the mess owner (Rahul Bhaiya) via WhatsApp, and settles the shared cost through Splitwise.
+
+# **4. Feature Requirements**
+
+## **4.1 People Management**
+
+The user maintains a list of people for whom food is tracked. Each person requires only a name and phone number. Splitwise user mapping is done once in Settings.
+
+| **Feature** | **Description** | **Priority** |
+| --- | --- | --- |
+| **Add Person** | Add a new person with name and phone number | Must Have |
+| **View People** | View the full list of all people | Must Have |
+| **Edit Person** | Edit name or phone number | Should Have |
+| **Delete Person** | Remove a person (with confirmation) | Should Have |
+| **Splitwise Mapping** | Map each person to their Splitwise user once in Settings | Must Have |
+
+**Data Model — Person**
+
+| **Field** | **Type** | **Notes** |
+| --- | --- | --- |
+| **id** | Integer | Auto-increment primary key |
+| **name** | String | Required. Display name used throughout the app |
+| **phone_number** | String | Required. Used for reference and potential future WhatsApp deep-link |
+| **splitwise_user_id** | String | Nullable. Set once in Settings via Splitwise user mapping |
+| **splitwise_user_name** | String | Nullable. Stored for display in Settings |
+| **created_at** | DateTime | Timestamp of record creation |
+
+## **4.2 Daily Meal Entry**
+
+For each day, the user logs what each person ate. Each day has one meal event. Multiple people can have individual free-text food entries. The date is stored in full format including year (e.g. Thu 24 Apr 2025).
+
+| **Feature** | **Description** | **Priority** |
+| --- | --- | --- |
+| **Create Day Entry** | Start a new entry for a specific date (full date: DD MMM YYYY) | Must Have |
+| **Add Meal per Person** | Select a person and type their free-text meal description | Must Have |
+| **Multiple People per Day** | Any number of people can have an entry for the same day | Must Have |
+| **Edit Meal Entry** | Edit a person's food description for a given day | Must Have |
+| **Remove Person from Day** | Remove a person's entry from a specific day | Should Have |
+| **View History** | Browse past day entries sorted by date descending | Must Have |
+
+**Data Model — Day Entry**
+
+| **Field** | **Type** | **Notes** |
+| --- | --- | --- |
+| **id** | Integer | Auto-increment primary key |
+| **date** | Date | Full date stored as ISO 8601 (YYYY-MM-DD); displayed as 'Thu 24 Apr 2025' |
+| **total_cost** | Decimal | Nullable — filled in once received from Rahul Bhaiya |
+| **paid_by_person_id** | Integer | FK → Person. The person who paid the bill. Used for Splitwise payer attribution |
+| **splitwise_expense_id** | String | Nullable. Stores the Splitwise expense ID after first sync; used to update instead of create on re-sync |
+| **splitwise_synced** | Boolean | True if successfully synced to Splitwise |
+| **created_at** | DateTime | Timestamp of record creation |
+
+**Data Model — Meal Entry**
+
+| **Field** | **Type** | **Notes** |
+| --- | --- | --- |
+| **id** | Integer | Auto-increment primary key |
+| **day_entry_id** | Integer | FK → Day Entry |
+| **person_id** | Integer | FK → Person |
+| **meal_description** | String | Free-text e.g. '4 roti + rice + egg curry' |
+
+## **4.3 Cost Management ****&**** Paid By**
+
+The total cost for a day is entered once received from Rahul Bhaiya. The user must also select who paid the bill. This determines the payer in Splitwise — the payer is recorded as having paid the full amount, and all others owe their equal share.
+
+| **Feature** | **Description** | **Priority** |
+| --- | --- | --- |
+| **Enter Total Cost** | Input the total cost for a day | Must Have |
+| **Select Paid By** | Select which person paid the bill from the list of people who have a meal entry that day | Must Have |
+| **Auto-calculate Split** | Divide total cost equally among all people with a meal entry that day | Must Have |
+| **View Per-Person Share** | Show each person's share = total cost ÷ number of people | Must Have |
+| **Edit Cost / Paid By** | Allow updating cost or payer — triggers re-sync if already synced to Splitwise | Must Have |
+
+**Split Logic**
+
+- Cost is always split equally among all people with a meal entry for that day.
+
+- Per-person share = Total Cost ÷ Number of people with entries.
+
+- The 'Paid By' person is recorded as paying the full amount in Splitwise.
+
+- All others owe their equal share to the payer.
+
+- No custom or unequal splits are supported in v1.
+
+## **4.4 WhatsApp Message Sharing**
+
+After logging meal entries, the user can generate and share a pre-formatted WhatsApp message to send to Rahul Bhaiya to request the total cost.
+
+| **Feature** | **Description** | **Priority** |
+| --- | --- | --- |
+| **Generate Message** | Auto-generate message from the day's entries in the correct format | Must Have |
+| **Share via WhatsApp** | Open WhatsApp with the message pre-filled using the WhatsApp URL scheme | Must Have |
+| **No Contact Pre-fill** | App opens WhatsApp with message text only — user selects the contact manually | Must Have |
+
+**Message Format**
+
+The generated message uses the full date format and lists all food entries one per line, with no person names:
+
+| **{Day} {DD} {Mon} {YYYY}** {Person 1 meal description} {Person 2 meal description} ... **Example:** **Thu 24 Apr 2025** 2 roti + rice + egg curry Puri + sabzi 4 roti + rajma + aloo |
+| --- |
+
+*Note: Person names are NOT included in the message — only food descriptions in entry order.*
+
+## **4.5 Splitwise Integration**
+
+Once the total cost and payer are set, the user syncs the day's expense to Splitwise. The app uses the pre-configured group from Settings. If the expense was previously synced, it updates the existing Splitwise expense (using the stored expense ID) rather than creating a new one.
+
+| **Feature** | **Description** | **Priority** |
+| --- | --- | --- |
+| **Splitwise Auth** | User authenticates once with Splitwise via OAuth 2.0 | Must Have |
+| **Group in Settings** | User selects the Splitwise group once in Settings — used for all syncs | Must Have |
+| **Person Mapping in Settings** | Each person in the app is mapped to a Splitwise user once in Settings | Must Have |
+| **Sync Expense** | Create an equal-split expense in Splitwise attributed to the correct payer | Must Have |
+| **Update on Re-sync** | If expense was previously synced, update it using stored splitwise_expense_id instead of creating a new expense | Must Have |
+| **No Recurring Expenses** | All expenses are one-time — no recurring or repeat billing | Must Have |
+| **Expense Description** | Auto-set to 'Office Food — {DD MMM YYYY}' e.g. 'Office Food — 24 Apr 2025' | Must Have |
+| **Sync Status Display** | Show synced/unsynced status on each day entry card | Must Have |
+| **Prevent Accidental Duplicate** | If cost or payer changes after sync, prompt user to confirm re-sync (update) | Should Have |
+
+**Sync Logic**
+
+- First sync → call POST /api/v3.0/create_expense → store returned expense ID in splitwise_expense_id.
+
+- Re-sync (cost or payer updated) → call POST /api/v3.0/update_expense/{id} using stored expense ID.
+
+- Payer = the person selected in 'Paid By' → paid_share = total_cost, owed_share = per_person_share.
+
+- All other participants → paid_share = 0, owed_share = per_person_share.
+
+- Only people with a meal entry that day are included as participants.
+
+- split_equally is not used — shares are calculated and passed explicitly to support custom payer.
+
+## **4.6 Settings**
+
+| **Feature** | **Description** | **Priority** |
+| --- | --- | --- |
+| **Splitwise Auth** | Connect / disconnect Splitwise account via OAuth 2.0 | Must Have |
+| **Splitwise Group** | Select and save the Splitwise group for all expense syncs | Must Have |
+| **Person-to-Splitwise Mapping** | For each person in the app, map them to their corresponding Splitwise user in the selected group | Must Have |
+| **View Mapping** | Display current mappings with option to edit | Must Have |
+
+## **4.7 CSV Export**
+
+The user can export all meal and cost data for a selected date range as a CSV file, saved to the device.
+
+| **Feature** | **Description** | **Priority** |
+| --- | --- | --- |
+| **Date Range Selection** | User selects a start date and end date for the export | Must Have |
+| **Export CSV** | Generate and save a CSV file to the device's Downloads folder | Must Have |
+| **CSV Contents** | One row per person per day: Date, Person Name, Meal Description, Total Cost, Per-Person Share, Paid By, Splitwise Synced | Must Have |
+| **Share Option** | Option to share the CSV file via Android share sheet (e.g. email, WhatsApp, Drive) | Should Have |
+
+**CSV Format**
+
+| **Date, Person Name, Phone, Meal Description, Total Cost (₹), Per-Person Share (₹), Paid By, Splitwise Synced** Thu 24 Apr 2025, Amit, 9876543210, 4 roti + rice + egg curry, 320, 80, Rahul, Yes Thu 24 Apr 2025, Priya, 9123456789, Puri + sabzi, 320, 80, Rahul, Yes |
+| --- |
+
+# **5. Non-Functional Requirements**
+
+| **Feature** | **Description** | **Priority** |
+| --- | --- | --- |
+| **Platform** | Android only (React Native) | Must Have |
+| **Local Storage** | SQLite via expo-sqlite or react-native-sqlite-storage | Must Have |
+| **No Backend** | No server, no cloud sync, no login required for core features | Must Have |
+| **Offline First** | All features work offline except Splitwise sync | Must Have |
+| **Performance** | App loads and responds within 1 second for all local operations | Should Have |
+| **Data Persistence** | Data persists across app restarts and reboots | Must Have |
+| **Single User** | No multi-user or account system | Must Have |
+
+# **6. Key User Flows**
+
+## **Flow 1: Add a New Person**
+
+- Go to People tab → tap 'Add Person'
+
+- Enter name and phone number → Save
+
+- Go to Settings → map this person to their Splitwise account
+
+## **Flow 2: Log Daily Food Entries**
+
+- Tap 'New Day Entry' → date auto-fills to today (DD MMM YYYY), editable
+
+- For each person who ate: select their name → type meal description → add
+
+- Save the day entry
+
+## **Flow 3: Send Message to Rahul Bhaiya**
+
+- Open the day entry → tap 'Share on WhatsApp'
+
+- App opens WhatsApp with the pre-formatted message (date + food list, no names)
+
+- User selects Rahul Bhaiya's contact in WhatsApp and sends
+
+## **Flow 4: Enter Cost, Set Payer ****&**** Sync to Splitwise**
+
+- Rahul Bhaiya replies with the total cost
+
+- Open the day entry → tap 'Enter Cost' → type total amount
+
+- Select 'Paid By' → choose who paid the bill from that day's participants
+
+- App shows per-person share = total ÷ number of people
+
+- Tap 'Sync to Splitwise' → expense created (or updated if previously synced)
+
+- Day entry marked as synced with Splitwise expense ID stored locally
+
+# **7. Out of Scope (v1.0)**
+
+- Cloud backup or cross-device sync
+
+- Multi-user access or sharing the app
+
+- Pre-defined menu / food item catalogue
+
+- Unequal cost splitting
+
+- SplitKaro integration (no public API available)
+
+- Push notifications or reminders
+
+- Automatic price detection from WhatsApp replies
+
+- Analytics or spending dashboards
+
+- iOS support (Android only in v1)
+
+# **8. Technical Considerations**
+
+**Platform: **Android (React Native with Expo or bare workflow)
+
+**Local DB: **SQLite via expo-sqlite or react-native-sqlite-storage
+
+**WhatsApp Share: **Android Intent / WhatsApp URL scheme: whatsapp://send?text={encoded_message}
+
+**CSV Export: **Generated in-app, saved to device Downloads via react-native-fs or expo-file-system
+
+**Splitwise Auth: **OAuth 2.0 — registered app at dev.splitwise.com
+
+**Splitwise Create: **POST https://secure.splitwise.com/api/v3.0/create_expense
+
+**Splitwise Update: **POST https://secure.splitwise.com/api/v3.0/update_expense/{id}
+
+**Splitwise Participants: **Payer: paid_share = total_cost, owed_share = share. Others: paid_share = 0, owed_share = share
+
+**Internet Required: **Only for Splitwise sync — all other features are fully offline
+
+# **9. Decisions ****&**** Resolved Questions**
+
+| **Feature** | **Description** | **Priority** |
+| --- | --- | --- |
+| **Target Platform** | Android only for v1.0, built with React Native | Resolved |
+| **Splitwise Group** | Configured once in Settings — used for all syncs | Resolved |
+| **Person-to-Splitwise Mapping** | Done once in Settings — no per-sync mapping needed | Resolved |
+| **CSV Export** | Yes — export for a user-defined date range, saved to Downloads with share option | Resolved |
+| **Re-sync Behaviour** | Update existing Splitwise expense using stored expense ID — no duplicates | Resolved |
+| **Date Format** | Full date stored as ISO 8601; displayed as 'Thu 24 Apr 2025' (includes year) | Resolved |
+
+*— End of Document —*
