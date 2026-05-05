@@ -14,10 +14,12 @@ import { Divider } from '../../components/ui/Divider';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Colors, Spacing } from '../../theme/tokens';
 import { getAllPersons, createPerson, updatePerson, deletePerson } from '../../db/repositories/personRepository';
+import { useOwner } from '../../context/OwnerContext';
 import { Person } from '../../types/models';
 
 export function PeopleScreen() {
   const insets = useSafeAreaInsets();
+  const { isOwner } = useOwner();
   const [persons, setPersons] = useState<Person[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editTarget, setEditTarget] = useState<Person | null>(null);
@@ -42,6 +44,7 @@ export function PeopleScreen() {
   }
 
   function openEdit(person: Person) {
+    if (!isOwner) return;
     setEditTarget(person);
     setName(person.name);
     setPhone(person.phone_number);
@@ -91,9 +94,11 @@ export function PeopleScreen() {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.SM }]}>
         <AppText variant="SCREEN_TITLE">People</AppText>
-        <TouchableOpacity onPress={openAdd} style={styles.addBtn}>
-          <AppText variant="BUTTON" color={Colors.BG}>+ Add</AppText>
-        </TouchableOpacity>
+        {isOwner && (
+          <TouchableOpacity onPress={openAdd} style={styles.addBtn}>
+            <AppText variant="BUTTON" color={Colors.BG}>+ Add</AppText>
+          </TouchableOpacity>
+        )}
       </View>
 
       <FlatList
@@ -101,7 +106,11 @@ export function PeopleScreen() {
         keyExtractor={(p) => String(p.id)}
         ItemSeparatorComponent={Divider}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.personRow} onPress={() => openEdit(item)}>
+          <TouchableOpacity
+            style={styles.personRow}
+            onPress={() => openEdit(item)}
+            activeOpacity={isOwner ? 0.7 : 1}
+          >
             <Avatar name={item.name} size="MD" />
             <View style={styles.personInfo}>
               <AppText variant="LIST_TITLE">{item.name}</AppText>
@@ -117,54 +126,56 @@ export function PeopleScreen() {
         ListEmptyComponent={
           <EmptyState
             title="No people yet"
-            subtitle="Add the people who share food orders"
+            subtitle={isOwner ? 'Add the people who share food orders' : 'No people added yet'}
           />
         }
       />
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <AppText variant="LIST_TITLE">{editTarget ? 'Edit Person' : 'Add Person'}</AppText>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <AppText variant="BODY" color={Colors.TEXT_TERTIARY}>✕</AppText>
-              </TouchableOpacity>
-            </View>
-            <ScrollView>
-              <AppInput
-                label="Name"
-                placeholder="e.g. Rahul Sharma"
-                value={name}
-                onChangeText={(t) => { setName(t); setNameError(''); }}
-                error={nameError}
-                style={{ marginBottom: Spacing.MD }}
-              />
-              <AppInput
-                label="Phone number"
-                placeholder="+91 98765 43210"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                mono
-                style={{ marginBottom: Spacing.LG }}
-              />
-              <AppButton label="Save" onPress={handleSave} loading={saving} />
-              {editTarget && (
-                <AppButton
-                  label="Delete person"
-                  variant="ghost"
-                  onPress={handleDelete}
-                  style={{ marginTop: Spacing.SM }}
+      {isOwner && (
+        <Modal visible={modalVisible} animationType="slide" transparent>
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHeader}>
+                <AppText variant="LIST_TITLE">{editTarget ? 'Edit Person' : 'Add Person'}</AppText>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <AppText variant="BODY" color={Colors.TEXT_TERTIARY}>✕</AppText>
+                </TouchableOpacity>
+              </View>
+              <ScrollView keyboardShouldPersistTaps="handled">
+                <AppInput
+                  label="Name"
+                  placeholder="e.g. Rahul Sharma"
+                  value={name}
+                  onChangeText={(t) => { setName(t); setNameError(''); }}
+                  error={nameError}
+                  style={{ marginBottom: Spacing.MD }}
                 />
-              )}
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+                <AppInput
+                  label="Phone number"
+                  placeholder="+91 98765 43210"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  mono
+                  style={{ marginBottom: Spacing.LG }}
+                />
+                <AppButton label="Save" onPress={handleSave} loading={saving} />
+                {editTarget && (
+                  <AppButton
+                    label="Delete person"
+                    variant="ghost"
+                    onPress={handleDelete}
+                    style={{ marginTop: Spacing.SM }}
+                  />
+                )}
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+      )}
     </View>
   );
 }

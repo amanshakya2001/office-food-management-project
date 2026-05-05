@@ -11,7 +11,7 @@ import {
 import { DMMono_400Regular } from '@expo-google-fonts/dm-mono';
 import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { DBProvider } from './src/db/DBContext';
+import { OwnerProvider } from './src/context/OwnerContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { Colors } from './src/theme/tokens';
 
@@ -34,12 +34,12 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <DBProvider>
+      <OwnerProvider>
         <NavigationContainer>
           <StatusBar style="light" backgroundColor={Colors.BG} />
           <RootNavigator />
         </NavigationContainer>
-      </DBProvider>
+      </OwnerProvider>
     </SafeAreaProvider>
   );
 }

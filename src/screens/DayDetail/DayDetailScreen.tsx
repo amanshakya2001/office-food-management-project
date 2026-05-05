@@ -15,6 +15,7 @@ import { DayEntry, MealEntry, Person } from '../../types/models';
 import { formatDisplayDate } from '../../services/dateUtils';
 import { buildWhatsAppMessage, shareOnWhatsApp } from '../../services/whatsappService';
 import { syncToSplitwise } from '../../services/splitwiseSync';
+import { useOwner } from '../../context/OwnerContext';
 import { HomeStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<HomeStackParamList, 'DayDetail'>;
@@ -24,6 +25,7 @@ export function DayDetailScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { dayEntryId } = route.params;
+  const { isOwner } = useOwner();
 
   const [dayEntry, setDayEntry] = useState<DayEntry | null>(null);
   const [meals, setMeals] = useState<(MealEntry & { person: Person })[]>([]);
@@ -79,11 +81,11 @@ export function DayDetailScreen() {
   function handleRemoveFromApp() {
     Alert.alert(
       'Remove from app?',
-      'This will delete the entry from your device only. The Splitwise expense will NOT be affected.',
+      'This will delete the entry. The Splitwise expense will NOT be affected.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Remove from app',
+          text: 'Remove',
           style: 'destructive',
           onPress: async () => {
             await deleteDayEntry(dayEntryId);
@@ -101,6 +103,7 @@ export function DayDetailScreen() {
   }
 
   async function handleDeleteMeal(mealId: number) {
+    if (!isOwner) return;
     Alert.alert('Remove meal?', 'This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -132,6 +135,7 @@ export function DayDetailScreen() {
       : null;
 
   const canSync =
+    isOwner &&
     dayEntry.total_cost !== null &&
     payer !== null &&
     uniqueParticipants.every((p) => p.splitwise_user_id);
@@ -176,9 +180,11 @@ export function DayDetailScreen() {
               <AppText variant="MEAL_DESCRIPTION">{meal.meal_description}</AppText>
             </View>
           </View>
-          <TouchableOpacity onPress={() => handleDeleteMeal(meal.id)}>
-            <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY}>✕</AppText>
-          </TouchableOpacity>
+          {isOwner && (
+            <TouchableOpacity onPress={() => handleDeleteMeal(meal.id)}>
+              <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY}>✕</AppText>
+            </TouchableOpacity>
+          )}
         </View>
       ))}
 
@@ -207,39 +213,43 @@ export function DayDetailScreen() {
         </View>
       </View>
 
-      <AppButton
-        label="Edit Cost & Payer"
-        variant="secondary"
-        onPress={() => navigation.navigate('CostEntry', { dayEntryId: dayEntry.id })}
-        style={{ marginTop: Spacing.MD }}
-      />
-
-      <AppButton
-        label={syncing ? 'Syncing...' : dayEntry.splitwise_synced ? 'Update Splitwise' : 'Sync to Splitwise'}
-        onPress={handleSync}
-        disabled={!canSync}
-        loading={syncing}
-        style={{ marginTop: Spacing.SM }}
-      />
-
-      {!canSync && dayEntry.total_cost !== null && (
-        <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY} style={styles.syncHint}>
-          {!payer ? 'Set a payer to sync.' : 'Some participants are not linked to Splitwise. Go to Settings.'}
-        </AppText>
-      )}
-
-      {dayEntry.splitwise_synced && (
+      {isOwner && (
         <>
-          <Divider style={{ marginTop: Spacing.LG }} />
           <AppButton
-            label="Remove from app"
-            variant="ghost"
-            onPress={handleRemoveFromApp}
+            label="Edit Cost & Payer"
+            variant="secondary"
+            onPress={() => navigation.navigate('CostEntry', { dayEntryId: dayEntry.id })}
+            style={{ marginTop: Spacing.MD }}
+          />
+
+          <AppButton
+            label={syncing ? 'Syncing...' : dayEntry.splitwise_synced ? 'Update Splitwise' : 'Sync to Splitwise'}
+            onPress={handleSync}
+            disabled={!canSync}
+            loading={syncing}
             style={{ marginTop: Spacing.SM }}
           />
-          <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY} style={styles.syncHint}>
-            Deletes local data only. Splitwise expense is kept.
-          </AppText>
+
+          {!canSync && dayEntry.total_cost !== null && (
+            <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY} style={styles.syncHint}>
+              {!payer ? 'Set a payer to sync.' : 'Some participants are not linked to Splitwise. Go to Settings.'}
+            </AppText>
+          )}
+
+          {dayEntry.splitwise_synced && (
+            <>
+              <Divider style={{ marginTop: Spacing.LG }} />
+              <AppButton
+                label="Remove from app"
+                variant="ghost"
+                onPress={handleRemoveFromApp}
+                style={{ marginTop: Spacing.SM }}
+              />
+              <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY} style={styles.syncHint}>
+                Deletes local data only. Splitwise expense is kept.
+              </AppText>
+            </>
+          )}
         </>
       )}
     </ScrollView>

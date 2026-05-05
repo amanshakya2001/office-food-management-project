@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -11,6 +11,7 @@ import { getAllDayEntries } from '../../db/repositories/dayEntryRepository';
 import { getMealEntriesByDayEntry } from '../../db/repositories/mealEntryRepository';
 import { DayEntry } from '../../types/models';
 import { currentMonthRange } from '../../services/dateUtils';
+
 import { HomeStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<HomeStackParamList, 'Home'>;

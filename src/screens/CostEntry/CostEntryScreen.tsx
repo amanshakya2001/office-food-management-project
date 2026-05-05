@@ -11,7 +11,8 @@ import { Colors, Spacing } from '../../theme/tokens';
 import { getDayEntryById, updateDayEntry } from '../../db/repositories/dayEntryRepository';
 import { getMealEntriesByDayEntry } from '../../db/repositories/mealEntryRepository';
 import { getAllPersons } from '../../db/repositories/personRepository';
-import { DayEntry, MealEntry, Person } from '../../types/models';
+import { MealEntry, Person } from '../../types/models';
+import { useOwner } from '../../context/OwnerContext';
 import { HomeStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<HomeStackParamList, 'CostEntry'>;
@@ -21,8 +22,8 @@ export function CostEntryScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { dayEntryId } = route.params;
+  const { isOwner } = useOwner();
 
-  const [dayEntry, setDayEntry] = useState<DayEntry | null>(null);
   const [meals, setMeals] = useState<(MealEntry & { person: Person })[]>([]);
   const [allPersons, setAllPersons] = useState<Person[]>([]);
   const [costText, setCostText] = useState('');
@@ -32,7 +33,6 @@ export function CostEntryScreen() {
   const load = useCallback(async () => {
     const entry = await getDayEntryById(dayEntryId);
     if (!entry) return;
-    setDayEntry(entry);
     if (entry.total_cost !== null) setCostText(String(entry.total_cost));
     if (entry.paid_by_person_id) setPayerId(entry.paid_by_person_id);
     const mealList = await getMealEntriesByDayEntry(dayEntryId);
@@ -48,11 +48,11 @@ export function CostEntryScreen() {
   ).map((m) => m.person);
 
   const participantIds = new Set(uniqueParticipants.map((p) => p.id));
-
   const totalCost = parseFloat(costText) || 0;
   const perShare = uniqueParticipants.length > 0 ? totalCost / uniqueParticipants.length : 0;
 
   async function handleSave() {
+    if (!isOwner) return;
     const cost = parseFloat(costText);
     if (isNaN(cost) || cost <= 0) {
       Alert.alert('Invalid amount', 'Please enter a valid cost.');
@@ -78,8 +78,12 @@ export function CostEntryScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         <AppText variant="SCREEN_TITLE" style={styles.heading}>Cost & Payer</AppText>
 
         <AppInput
@@ -88,6 +92,7 @@ export function CostEntryScreen() {
           value={costText}
           onChangeText={setCostText}
           keyboardType="decimal-pad"
+          editable={isOwner}
         />
 
         {totalCost > 0 && uniqueParticipants.length > 0 && (
@@ -109,7 +114,8 @@ export function CostEntryScreen() {
           <TouchableOpacity
             key={person.id}
             style={styles.payerRow}
-            onPress={() => setPayerId(person.id)}
+            onPress={() => isOwner && setPayerId(person.id)}
+            activeOpacity={isOwner ? 0.7 : 1}
           >
             <View style={styles.payerLeft}>
               <Avatar name={person.name} size="MD" />
@@ -126,7 +132,9 @@ export function CostEntryScreen() {
           </TouchableOpacity>
         ))}
 
-        <AppButton label="Save" onPress={handleSave} loading={saving} style={styles.saveBtn} />
+        {isOwner && (
+          <AppButton label="Save" onPress={handleSave} loading={saving} style={styles.saveBtn} />
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

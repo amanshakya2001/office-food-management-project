@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, ScrollView, StyleSheet, TouchableOpacity, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppText } from '../../components/ui/AppText';
@@ -26,10 +27,24 @@ interface MealRow {
   description: string;
 }
 
+function isoFromDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function NewEntryScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
-  const [date, setDate] = useState(route.params?.date ?? todayISO());
+
+  const initialDate = route.params?.date ?? todayISO();
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const [y, m, d] = initialDate.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  });
+  const [showPicker, setShowPicker] = useState(false);
+
   const [persons, setPersons] = useState<Person[]>([]);
   const [mealRows, setMealRows] = useState<MealRow[]>([{ personId: null, personName: '', description: '' }]);
   const [showPersonPicker, setShowPersonPicker] = useState<number | null>(null);
@@ -58,11 +73,12 @@ export function NewEntryScreen() {
       return;
     }
 
+    const dateISO = isoFromDate(selectedDate);
     setSaving(true);
     try {
-      let dayEntry = await getDayEntryByDate(date);
+      let dayEntry = await getDayEntryByDate(dateISO);
       if (!dayEntry) {
-        dayEntry = await createDayEntry(date);
+        dayEntry = await createDayEntry(dateISO);
       }
       await bulkCreateMealEntries(
         validRows.map((r) => ({
@@ -80,14 +96,33 @@ export function NewEntryScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <AppText variant="SCREEN_TITLE" style={styles.heading}>New Day Entry</AppText>
 
-        <View style={styles.dateRow}>
+        {/* Date picker row */}
+        <TouchableOpacity style={styles.dateRow} onPress={() => setShowPicker(true)}>
           <AppText variant="LIST_SUBTITLE" color={Colors.TEXT_SECONDARY}>Date</AppText>
-          <AppText variant="LIST_TITLE" color={Colors.ACCENT_TEXT}>{formatDisplayDate(date)}</AppText>
-        </View>
+          <View style={styles.dateChip}>
+            <AppText variant="LIST_TITLE" color={Colors.ACCENT_TEXT}>
+              {formatDisplayDate(isoFromDate(selectedDate))}
+            </AppText>
+            <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY} style={{ marginLeft: 6 }}>▾</AppText>
+          </View>
+        </TouchableOpacity>
+
+        {showPicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(_, date) => {
+              setShowPicker(Platform.OS === 'ios');
+              if (date) setSelectedDate(date);
+            }}
+            maximumDate={new Date(new Date().getFullYear() + 1, 11, 31)}
+          />
+        )}
 
         <Divider />
 
@@ -171,6 +206,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.MD,
+    paddingVertical: Spacing.XS,
+  },
+  dateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.SURFACE,
+    paddingHorizontal: Spacing.MD,
+    paddingVertical: Spacing.XS + 2,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.BORDER,
   },
   mealRow: { marginTop: Spacing.MD },
   mealRowHeader: {
@@ -179,9 +225,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.XS,
   },
-  personSelector: {
-    paddingVertical: Spacing.XS,
-  },
+  personSelector: { paddingVertical: Spacing.XS },
   personChip: {
     flexDirection: 'row',
     alignItems: 'center',
