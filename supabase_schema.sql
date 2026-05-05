@@ -26,6 +26,13 @@ create table if not exists meal_entries (
   meal_description text not null
 );
 
+create table if not exists dishes (
+  id bigint generated always as identity primary key,
+  name text not null unique,
+  is_countable boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
 -- Allow anyone with the anon key to read and write all tables
 -- (ownership/write gating is handled in the app, not the DB)
 alter table persons enable row level security;
@@ -46,3 +53,9 @@ create policy "public read meal_entries" on meal_entries for select using (true)
 create policy "public write meal_entries" on meal_entries for insert with check (true);
 create policy "public update meal_entries" on meal_entries for update using (true);
 create policy "public delete meal_entries" on meal_entries for delete using (true);
+
+alter table dishes enable row level security;
+create policy "public read dishes" on dishes for select using (true);
+create policy "public write dishes" on dishes for insert with check (true);
+create policy "public update dishes" on dishes for update using (true);
+create policy "public delete dishes" on dishes for delete using (true);

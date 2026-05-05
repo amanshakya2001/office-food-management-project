@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, ScrollView, StyleSheet, TouchableOpacity, Alert, KeyboardAvoidingView, Platform,
+  View, ScrollView, StyleSheet, TouchableOpacity, Alert, Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppText } from '../../components/ui/AppText';
-import { AppInput } from '../../components/ui/AppInput';
 import { AppButton } from '../../components/ui/AppButton';
 import { Avatar } from '../../components/ui/Avatar';
 import { Divider } from '../../components/ui/Divider';
-import { Colors, Spacing } from '../../theme/tokens';
+import { DishPickerModal, DishSelection, selectionsToDescription } from '../../components/DishPickerModal';
+import { Colors, Spacing, Radius } from '../../theme/tokens';
 import { getAllPersons } from '../../db/repositories/personRepository';
 import { createDayEntry, getDayEntryByDate } from '../../db/repositories/dayEntryRepository';
 import { bulkCreateMealEntries } from '../../db/repositories/mealEntryRepository';
@@ -24,7 +24,7 @@ type Route = RouteProp<HomeStackParamList, 'NewEntry'>;
 interface MealRow {
   personId: number | null;
   personName: string;
-  description: string;
+  selections: DishSelection[];
 }
 
 function isoFromDate(d: Date): string {
@@ -46,8 +46,9 @@ export function NewEntryScreen() {
   const [showPicker, setShowPicker] = useState(false);
 
   const [persons, setPersons] = useState<Person[]>([]);
-  const [mealRows, setMealRows] = useState<MealRow[]>([{ personId: null, personName: '', description: '' }]);
+  const [mealRows, setMealRows] = useState<MealRow[]>([{ personId: null, personName: '', selections: [] }]);
   const [showPersonPicker, setShowPersonPicker] = useState<number | null>(null);
+  const [dishPickerRow, setDishPickerRow] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -59,7 +60,7 @@ export function NewEntryScreen() {
   }
 
   function addRow() {
-    setMealRows((rows) => [...rows, { personId: null, personName: '', description: '' }]);
+    setMealRows((rows) => [...rows, { personId: null, personName: '', selections: [] }]);
   }
 
   function removeRow(index: number) {
@@ -67,9 +68,9 @@ export function NewEntryScreen() {
   }
 
   async function handleSave() {
-    const validRows = mealRows.filter((r) => r.personId && r.description.trim());
+    const validRows = mealRows.filter((r) => r.personId && r.selections.length > 0);
     if (!validRows.length) {
-      Alert.alert('Nothing to save', 'Please add at least one meal entry with a person and description.');
+      Alert.alert('Nothing to save', 'Please select a person and at least one dish for each entry.');
       return;
     }
 
@@ -84,7 +85,7 @@ export function NewEntryScreen() {
         validRows.map((r) => ({
           dayEntryId: dayEntry!.id,
           personId: r.personId!,
-          mealDescription: r.description.trim(),
+          mealDescription: selectionsToDescription(r.selections),
         }))
       );
       navigation.replace('DayDetail', { dayEntryId: dayEntry.id });
@@ -96,104 +97,127 @@ export function NewEntryScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <AppText variant="SCREEN_TITLE" style={styles.heading}>New Day Entry</AppText>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <AppText variant="SCREEN_TITLE" style={styles.heading}>New Day Entry</AppText>
 
-        {/* Date picker row */}
-        <TouchableOpacity style={styles.dateRow} onPress={() => setShowPicker(true)}>
-          <AppText variant="LIST_SUBTITLE" color={Colors.TEXT_SECONDARY}>Date</AppText>
-          <View style={styles.dateChip}>
-            <AppText variant="LIST_TITLE" color={Colors.ACCENT_TEXT}>
-              {formatDisplayDate(isoFromDate(selectedDate))}
-            </AppText>
-            <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY} style={{ marginLeft: 6 }}>▾</AppText>
-          </View>
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.dateRow} onPress={() => setShowPicker(true)}>
+        <AppText variant="LIST_SUBTITLE" color={Colors.TEXT_SECONDARY}>Date</AppText>
+        <View style={styles.dateChip}>
+          <AppText variant="LIST_TITLE" color={Colors.ACCENT_TEXT}>
+            {formatDisplayDate(isoFromDate(selectedDate))}
+          </AppText>
+          <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY} style={{ marginLeft: 6 }}>▾</AppText>
+        </View>
+      </TouchableOpacity>
 
-        {showPicker && (
-          <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={(_, date) => {
-              setShowPicker(Platform.OS === 'ios');
-              if (date) setSelectedDate(date);
-            }}
-            maximumDate={new Date(new Date().getFullYear() + 1, 11, 31)}
-          />
-        )}
+      {showPicker && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={(_, date) => {
+            setShowPicker(Platform.OS === 'ios');
+            if (date) setSelectedDate(date);
+          }}
+          maximumDate={new Date(new Date().getFullYear() + 1, 11, 31)}
+        />
+      )}
 
-        <Divider />
+      <Divider />
 
-        {mealRows.map((row, i) => (
-          <View key={i} style={styles.mealRow}>
-            <View style={styles.mealRowHeader}>
-              <TouchableOpacity
-                style={styles.personSelector}
-                onPress={() => setShowPersonPicker(showPersonPicker === i ? null : i)}
-              >
-                {row.personId ? (
-                  <View style={styles.personChip}>
-                    <Avatar name={row.personName} size="XS" />
-                    <AppText variant="BADGE" color={Colors.TEXT_PRIMARY} style={{ marginLeft: 6 }}>
-                      {row.personName}
-                    </AppText>
-                  </View>
-                ) : (
-                  <AppText variant="BADGE" color={Colors.TEXT_TERTIARY}>Select person ▾</AppText>
-                )}
+      {mealRows.map((row, i) => (
+        <View key={i} style={styles.mealRow}>
+          <View style={styles.mealRowHeader}>
+            <TouchableOpacity
+              style={styles.personSelector}
+              onPress={() => setShowPersonPicker(showPersonPicker === i ? null : i)}
+            >
+              {row.personId ? (
+                <View style={styles.personChip}>
+                  <Avatar name={row.personName} size="XS" />
+                  <AppText variant="BADGE" color={Colors.TEXT_PRIMARY} style={{ marginLeft: 6 }}>
+                    {row.personName}
+                  </AppText>
+                </View>
+              ) : (
+                <AppText variant="BADGE" color={Colors.TEXT_TERTIARY}>Select person ▾</AppText>
+              )}
+            </TouchableOpacity>
+            {mealRows.length > 1 && (
+              <TouchableOpacity onPress={() => removeRow(i)}>
+                <AppText variant="CAPTION" color={Colors.ERROR_TEXT}>Remove</AppText>
               </TouchableOpacity>
-              {mealRows.length > 1 && (
-                <TouchableOpacity onPress={() => removeRow(i)}>
-                  <AppText variant="CAPTION" color={Colors.ERROR_TEXT}>Remove</AppText>
-                </TouchableOpacity>
+            )}
+          </View>
+
+          {showPersonPicker === i && (
+            <View style={styles.personList}>
+              {persons.length === 0 ? (
+                <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY} style={{ padding: Spacing.SM }}>
+                  No people yet. Add people in the People tab first.
+                </AppText>
+              ) : (
+                persons.map((p) => (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={styles.personOption}
+                    onPress={() => {
+                      updateRow(i, { personId: p.id, personName: p.name });
+                      setShowPersonPicker(null);
+                    }}
+                  >
+                    <Avatar name={p.name} size="SM" />
+                    <AppText variant="LIST_SUBTITLE" style={{ marginLeft: Spacing.SM }}>{p.name}</AppText>
+                  </TouchableOpacity>
+                ))
               )}
             </View>
+          )}
 
-            {showPersonPicker === i && (
-              <View style={styles.personList}>
-                {persons.length === 0 ? (
-                  <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY} style={{ padding: Spacing.SM }}>
-                    No people yet. Add people in the People tab first.
+          {/* Dish selections display */}
+          {row.selections.length > 0 && (
+            <View style={styles.chipsRow}>
+              {row.selections.map((s) => (
+                <View key={s.dish.id} style={styles.chip}>
+                  <AppText variant="BADGE" color={Colors.ACCENT_TEXT}>
+                    {s.dish.is_countable ? `${s.qty} ${s.dish.name}` : s.dish.name}
                   </AppText>
-                ) : (
-                  persons.map((p) => (
-                    <TouchableOpacity
-                      key={p.id}
-                      style={styles.personOption}
-                      onPress={() => {
-                        updateRow(i, { personId: p.id, personName: p.name });
-                        setShowPersonPicker(null);
-                      }}
-                    >
-                      <Avatar name={p.name} size="SM" />
-                      <AppText variant="LIST_SUBTITLE" style={{ marginLeft: Spacing.SM }}>{p.name}</AppText>
-                    </TouchableOpacity>
-                  ))
-                )}
-              </View>
-            )}
+                </View>
+              ))}
+            </View>
+          )}
 
-            <AppInput
-              mono
-              placeholder="Meal description (e.g. 4 roti + dal)"
-              value={row.description}
-              onChangeText={(t) => updateRow(i, { description: t })}
-              style={{ marginTop: Spacing.SM }}
-            />
+          <TouchableOpacity
+            style={[styles.addDishBtn, row.selections.length > 0 && styles.addDishBtnActive]}
+            onPress={() => setDishPickerRow(i)}
+          >
+            <AppText variant="BADGE" color={row.selections.length > 0 ? Colors.ACCENT_TEXT : Colors.TEXT_TERTIARY}>
+              {row.selections.length > 0 ? '✎ Edit dishes' : '+ Add dishes'}
+            </AppText>
+          </TouchableOpacity>
 
-            {i < mealRows.length - 1 && <Divider style={{ marginTop: Spacing.MD }} />}
-          </View>
-        ))}
+          {i < mealRows.length - 1 && <Divider style={{ marginTop: Spacing.MD }} />}
+        </View>
+      ))}
 
-        <TouchableOpacity onPress={addRow} style={styles.addPersonBtn}>
-          <AppText variant="BUTTON" color={Colors.ACCENT_TEXT}>+ Add another person</AppText>
-        </TouchableOpacity>
+      <TouchableOpacity onPress={addRow} style={styles.addPersonBtn}>
+        <AppText variant="BUTTON" color={Colors.ACCENT_TEXT}>+ Add another person</AppText>
+      </TouchableOpacity>
 
-        <AppButton label="Save Entry" onPress={handleSave} loading={saving} style={styles.saveBtn} />
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <AppButton label="Save Entry" onPress={handleSave} loading={saving} style={styles.saveBtn} />
+
+      <DishPickerModal
+        visible={dishPickerRow !== null}
+        initial={dishPickerRow !== null ? mealRows[dishPickerRow]?.selections ?? [] : []}
+        onConfirm={(sels) => {
+          if (dishPickerRow !== null) {
+            updateRow(dishPickerRow, { selections: sels });
+          }
+          setDishPickerRow(null);
+        }}
+        onClose={() => setDishPickerRow(null)}
+      />
+    </ScrollView>
   );
 }
 
@@ -247,6 +271,35 @@ const styles = StyleSheet.create({
     padding: Spacing.SM + 4,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.BORDER,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.XS,
+    marginTop: Spacing.SM,
+  },
+  chip: {
+    backgroundColor: Colors.ACCENT_MUTED,
+    borderRadius: Radius.PILL,
+    paddingHorizontal: Spacing.SM,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: Colors.ACCENT,
+  },
+  addDishBtn: {
+    marginTop: Spacing.SM,
+    paddingVertical: Spacing.SM,
+    paddingHorizontal: Spacing.MD,
+    borderRadius: Radius.INPUT,
+    borderWidth: 1,
+    borderColor: Colors.BORDER,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+  },
+  addDishBtnActive: {
+    borderColor: Colors.ACCENT,
+    borderStyle: 'solid',
+    backgroundColor: Colors.ACCENT_MUTED,
   },
   addPersonBtn: {
     alignItems: 'center',

@@ -5,6 +5,7 @@ export type RootTabParamList = {
   PeopleTab: NavigatorScreenParams<PeopleStackParamList>;
   ExportTab: undefined;
   SettingsTab: undefined;
+  AdminTab: undefined;
 };
 
 export type HomeStackParamList = {

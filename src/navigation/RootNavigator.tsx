@@ -11,7 +11,9 @@ import { CostEntryScreen } from '../screens/CostEntry/CostEntryScreen';
 import { PeopleScreen } from '../screens/People/PeopleScreen';
 import { ExportScreen } from '../screens/Export/ExportScreen';
 import { SettingsScreen } from '../screens/Settings/SettingsScreen';
+import { AdminScreen } from '../screens/Admin/AdminScreen';
 import { Colors } from '../theme/tokens';
+import { useOwner } from '../context/OwnerContext';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
@@ -48,6 +50,7 @@ const TAB_ICONS: Record<string, string> = {
   PeopleTab: '👥',
   ExportTab: '📤',
   SettingsTab: '⚙️',
+  AdminTab: '🍽️',
 };
 
 const TAB_LABELS: Record<string, string> = {
@@ -55,10 +58,12 @@ const TAB_LABELS: Record<string, string> = {
   PeopleTab: 'People',
   ExportTab: 'Export',
   SettingsTab: 'Settings',
+  AdminTab: 'Admin',
 };
 
 export function RootNavigator() {
   const insets = useSafeAreaInsets();
+  const { isOwner } = useOwner();
 
   return (
     <Tab.Navigator
@@ -72,7 +77,7 @@ export function RootNavigator() {
           paddingTop: 6,
           paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
         },
-        tabBarIcon: ({ focused }) => (
+        tabBarIcon: () => (
           <Text style={{ fontSize: 20, lineHeight: 24 }}>{TAB_ICONS[route.name]}</Text>
         ),
         tabBarLabel: ({ focused }) => (
@@ -91,6 +96,9 @@ export function RootNavigator() {
       <Tab.Screen name="PeopleTab" component={PeopleStackNav} />
       <Tab.Screen name="ExportTab" component={ExportScreen} />
       <Tab.Screen name="SettingsTab" component={SettingsScreen} />
+      {isOwner && (
+        <Tab.Screen name="AdminTab" component={AdminScreen} />
+      )}
     </Tab.Navigator>
   );
 }
