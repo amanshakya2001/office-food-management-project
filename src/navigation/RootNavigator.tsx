@@ -99,7 +99,9 @@ export function RootNavigator() {
     >
       <Tab.Screen name="HomeTab" component={HomeStackNav} />
       <Tab.Screen name="PeopleTab" component={PeopleStackNav} />
-      <Tab.Screen name="ExportTab" component={ExportScreen} />
+      {isOwner && (
+        <Tab.Screen name="ExportTab" component={ExportScreen} />
+      )}
       {isOwner && (
         <Tab.Screen name="AdminTab" component={AdminScreen} />
       )}
