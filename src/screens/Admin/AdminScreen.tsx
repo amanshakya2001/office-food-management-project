@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, ScrollView, StyleSheet, TouchableOpacity, Alert, Modal, TextInput, Switch, ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '../../components/ui/AppText';
 import { AppButton } from '../../components/ui/AppButton';
 import { Divider } from '../../components/ui/Divider';
@@ -9,6 +10,7 @@ import { Colors, Spacing, Radius } from '../../theme/tokens';
 import { getDishes, createDish, updateDish, deleteDish, Dish } from '../../db/repositories/dishRepository';
 
 export function AdminScreen() {
+  const insets = useSafeAreaInsets();
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -84,11 +86,11 @@ export function AdminScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + Spacing.MD }]}>
       <View style={styles.headerRow}>
         <AppText variant="SCREEN_TITLE">Dishes</AppText>
         <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <AppText variant="BUTTON" color={Colors.BG}>+ Add</AppText>
+          <AppText variant="BUTTON" color={Colors.WHITE}>+ Add</AppText>
         </TouchableOpacity>
       </View>
 
@@ -178,7 +180,7 @@ export function AdminScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.BG, paddingTop: Spacing.LG },
+  container: { flex: 1, backgroundColor: Colors.BG },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -198,11 +200,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.LG,
   },
-  list: { paddingHorizontal: Spacing.LG, paddingBottom: Spacing.XXL },
+  list: { paddingBottom: Spacing.XXL },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Spacing.MD,
+    paddingHorizontal: Spacing.LG,
+    backgroundColor: Colors.WHITE,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.BORDER_LIGHT,
   },
   rowInfo: { flex: 1, gap: 2 },
   rowActions: {
@@ -219,26 +225,31 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(26,38,52,0.45)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: Colors.SURFACE,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: Colors.WHITE,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: Spacing.LG,
     paddingBottom: Spacing.XXL,
+    shadowColor: '#1A2634',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 10,
   },
   label: { marginBottom: Spacing.XS },
   input: {
-    backgroundColor: Colors.CARD,
+    backgroundColor: Colors.BG,
     borderRadius: Radius.INPUT,
     paddingHorizontal: Spacing.MD,
     paddingVertical: Spacing.SM + 2,
     color: Colors.TEXT_PRIMARY,
     fontFamily: 'DMSans_400Regular',
     fontSize: 15,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.BORDER,
     marginBottom: Spacing.MD,
   },
@@ -247,7 +258,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: Spacing.MD,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
     borderTopColor: Colors.BORDER,
     marginBottom: Spacing.MD,
   },

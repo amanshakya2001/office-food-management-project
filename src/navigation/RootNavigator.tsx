@@ -58,7 +58,7 @@ const TAB_LABELS: Record<string, string> = {
   PeopleTab: 'People',
   ExportTab: 'Export',
   SettingsTab: 'Settings',
-  AdminTab: 'Admin',
+  AdminTab: 'Dishes',
 };
 
 export function RootNavigator() {
@@ -70,21 +70,26 @@ export function RootNavigator() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.SURFACE,
+          backgroundColor: Colors.WHITE,
           borderTopColor: Colors.BORDER,
-          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopWidth: 1,
           height: 56 + insets.bottom,
           paddingTop: 6,
           paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+          shadowColor: '#1A2634',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          elevation: 8,
         },
-        tabBarIcon: () => (
-          <Text style={{ fontSize: 20, lineHeight: 24 }}>{TAB_ICONS[route.name]}</Text>
+        tabBarIcon: ({ focused }) => (
+          <Text style={{ fontSize: 20, lineHeight: 24, opacity: focused ? 1 : 0.45 }}>{TAB_ICONS[route.name]}</Text>
         ),
         tabBarLabel: ({ focused }) => (
           <Text style={{
-            fontSize: 11,
-            fontFamily: 'DMSans_400Regular',
-            color: focused ? Colors.ACCENT_TEXT : Colors.TEXT_TERTIARY,
+            fontSize: 10,
+            fontFamily: focused ? 'DMSans_600SemiBold' : 'DMSans_400Regular',
+            color: focused ? Colors.ACCENT : Colors.TEXT_TERTIARY,
             marginTop: -2,
           }}>
             {TAB_LABELS[route.name]}
@@ -95,10 +100,10 @@ export function RootNavigator() {
       <Tab.Screen name="HomeTab" component={HomeStackNav} />
       <Tab.Screen name="PeopleTab" component={PeopleStackNav} />
       <Tab.Screen name="ExportTab" component={ExportScreen} />
-      <Tab.Screen name="SettingsTab" component={SettingsScreen} />
       {isOwner && (
         <Tab.Screen name="AdminTab" component={AdminScreen} />
       )}
+      <Tab.Screen name="SettingsTab" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }

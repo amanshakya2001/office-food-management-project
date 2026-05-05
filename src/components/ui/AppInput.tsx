@@ -42,8 +42,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.XS,
   },
   input: {
-    backgroundColor: Colors.SURFACE,
-    borderWidth: 1,
+    backgroundColor: Colors.WHITE,
+    borderWidth: 1.5,
     borderColor: Colors.BORDER,
     borderRadius: Radius.INPUT,
     paddingHorizontal: Spacing.MD,

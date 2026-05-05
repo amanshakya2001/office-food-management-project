@@ -24,11 +24,11 @@ export function AppButton({
       style={[styles.button, style]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? Colors.BG : Colors.ACCENT} size="small" />
+        <ActivityIndicator color={variant === 'primary' ? Colors.WHITE : Colors.ACCENT} size="small" />
       ) : (
         <AppText
           variant="BUTTON"
-          color={variant === 'primary' ? Colors.BG : variant === 'secondary' ? Colors.TEXT_PRIMARY : Colors.ACCENT_TEXT}
+          color={variant === 'primary' ? Colors.WHITE : variant === 'secondary' ? Colors.ACCENT : Colors.ACCENT_TEXT}
         >
           {label}
         </AppText>
@@ -48,9 +48,9 @@ function getStyles(variant: string, disabled: boolean) {
       opacity: disabled ? 0.5 : 1,
       backgroundColor:
         variant === 'primary' ? Colors.ACCENT :
-        variant === 'secondary' ? Colors.TRANSPARENT : Colors.TRANSPARENT,
+        variant === 'secondary' ? Colors.ACCENT_MUTED : Colors.TRANSPARENT,
       borderWidth: variant === 'secondary' ? 1 : 0,
-      borderColor: variant === 'secondary' ? Colors.BORDER_LIGHT : undefined,
+      borderColor: variant === 'secondary' ? Colors.ACCENT : undefined,
     },
   });
 }

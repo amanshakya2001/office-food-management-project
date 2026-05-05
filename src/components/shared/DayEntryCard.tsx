@@ -3,7 +3,7 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { AppText } from '../ui/AppText';
 import { Badge } from '../ui/Badge';
 import { Avatar } from '../ui/Avatar';
-import { Colors, Spacing, Radius } from '../../theme/tokens';
+import { Colors, Spacing, Radius, Shadow } from '../../theme/tokens';
 import { DayEntry } from '../../types/models';
 import { formatDisplayDate } from '../../services/dateUtils';
 
@@ -56,7 +56,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.CARD,
     padding: Spacing.MD,
     marginHorizontal: Spacing.LG,
-    marginVertical: Spacing.XS,
+    marginVertical: Spacing.XS + 2,
+    borderWidth: 1,
+    borderColor: Colors.BORDER,
+    ...Shadow.CARD,
   },
   header: {
     flexDirection: 'row',

@@ -20,15 +20,18 @@ interface Props {
 
 export function DishPickerModal({ visible, initial, onConfirm, onClose }: Props) {
   const [dishes, setDishes] = useState<Dish[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selections, setSelections] = useState<Map<number, DishSelection>>(new Map());
 
   useEffect(() => {
     if (visible) {
       setLoading(true);
+      setError(null);
       getDishes()
         .then(setDishes)
+        .catch((e) => setError(e.message))
         .finally(() => setLoading(false));
       const map = new Map<number, DishSelection>();
       initial.forEach((s) => map.set(s.dish.id, s));
@@ -89,6 +92,10 @@ export function DishPickerModal({ visible, initial, onConfirm, onClose }: Props)
 
           {loading ? (
             <ActivityIndicator color={Colors.ACCENT} style={{ marginTop: Spacing.LG }} />
+          ) : error ? (
+            <AppText variant="CAPTION" color={Colors.ERROR_TEXT} style={styles.empty}>
+              Failed to load dishes: {error}
+            </AppText>
           ) : filtered.length === 0 ? (
             <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY} style={styles.empty}>
               {dishes.length === 0 ? 'No dishes yet. Ask admin to add dishes.' : 'No matches.'}
@@ -156,16 +163,21 @@ export function selectionsToDescription(selections: DishSelection[]): string {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(26,38,52,0.45)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: Colors.SURFACE,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: Colors.WHITE,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingTop: Spacing.MD,
     paddingBottom: Spacing.XXL,
-    maxHeight: '80%',
+    height: '80%',
+    shadowColor: '#1A2634',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 10,
   },
   header: {
     flexDirection: 'row',
@@ -173,18 +185,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.LG,
     paddingBottom: Spacing.MD,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.BORDER,
   },
   search: {
     marginHorizontal: Spacing.LG,
-    marginBottom: Spacing.SM,
-    backgroundColor: Colors.CARD,
+    marginTop: Spacing.SM,
+    marginBottom: Spacing.XS,
+    backgroundColor: Colors.BG,
     borderRadius: Radius.INPUT,
     paddingHorizontal: Spacing.MD,
     paddingVertical: Spacing.SM + 2,
     color: Colors.TEXT_PRIMARY,
     fontFamily: 'DMSans_400Regular',
     fontSize: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.BORDER,
   },
   list: { flex: 1 },
@@ -197,9 +212,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.LG,
-    paddingVertical: Spacing.SM + 2,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.BORDER,
+    paddingVertical: Spacing.MD,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.BORDER_LIGHT,
   },
   rowSelected: {
     backgroundColor: Colors.ACCENT_MUTED,
@@ -211,13 +226,14 @@ const styles = StyleSheet.create({
     gap: Spacing.SM,
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: Colors.BORDER_LIGHT,
+    borderColor: Colors.BORDER,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.WHITE,
   },
   checkboxSelected: {
     backgroundColor: Colors.ACCENT,
@@ -229,17 +245,17 @@ const styles = StyleSheet.create({
     gap: Spacing.SM,
   },
   stepBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Colors.CARD,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Colors.ACCENT_MUTED,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: Colors.BORDER,
+    borderColor: Colors.ACCENT,
   },
   qty: {
-    minWidth: 20,
+    minWidth: 22,
     textAlign: 'center',
   },
   confirmBtn: {
@@ -251,6 +267,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   confirmBtnDisabled: {
-    backgroundColor: Colors.CARD,
+    backgroundColor: Colors.BG,
+    borderWidth: 1,
+    borderColor: Colors.BORDER,
   },
 });

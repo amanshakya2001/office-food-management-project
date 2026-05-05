@@ -58,20 +58,20 @@ export function HomeScreen() {
           onPress={() => navigation.navigate('NewEntry', {})}
           style={styles.addBtn}
         >
-          <AppText variant="BUTTON" color={Colors.BG}>+ New Day</AppText>
+          <AppText variant="BUTTON" color={Colors.WHITE}>+ New Day</AppText>
         </TouchableOpacity>
       </View>
 
       {entries.length > 0 && (
         <View style={styles.statsBanner}>
           <View style={styles.stat}>
-            <AppText variant="HERO_NUMBER" color={Colors.ACCENT_TEXT}>₹{monthTotal.toFixed(0)}</AppText>
-            <AppText variant="CAPTION" color={Colors.TEXT_SECONDARY}>This month</AppText>
+            <AppText variant="HERO_NUMBER" color={Colors.WHITE}>₹{monthTotal.toFixed(0)}</AppText>
+            <AppText variant="CAPTION" color="rgba(255,255,255,0.75)">This month</AppText>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.stat}>
-            <AppText variant="HERO_NUMBER" color={Colors.TEXT_PRIMARY}>{entries.length}</AppText>
-            <AppText variant="CAPTION" color={Colors.TEXT_SECONDARY}>Total days</AppText>
+            <AppText variant="HERO_NUMBER" color={Colors.WHITE}>{entries.length}</AppText>
+            <AppText variant="CAPTION" color="rgba(255,255,255,0.75)">Total days</AppText>
           </View>
         </View>
       )}
@@ -117,13 +117,13 @@ const styles = StyleSheet.create({
   },
   statsBanner: {
     flexDirection: 'row',
-    backgroundColor: Colors.SURFACE,
+    backgroundColor: Colors.ACCENT,
     marginHorizontal: Spacing.LG,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: Spacing.MD,
     marginBottom: Spacing.MD,
   },
   stat: { flex: 1, alignItems: 'center' },
-  statDivider: { width: 1, backgroundColor: Colors.BORDER },
+  statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.3)' },
   list: { paddingBottom: Spacing.XXL },
 });

@@ -1,37 +1,37 @@
 export const Colors = {
   // Backgrounds
-  BG: '#0F0E0C',
-  SURFACE: '#1A1915',
-  CARD: '#222118',
+  BG: '#F2F5F7',
+  SURFACE: '#FFFFFF',
+  CARD: '#FFFFFF',
 
   // Borders
-  BORDER: '#2E2C24',
-  BORDER_LIGHT: '#3A3830',
+  BORDER: '#E0E5EA',
+  BORDER_LIGHT: '#EDF0F3',
 
-  // Accent
-  ACCENT: '#E8A020',
-  ACCENT_TEXT: '#F5C55A',
-  ACCENT_MUTED: '#2A1E08',
+  // Accent — Splitwise green
+  ACCENT: '#1CC29F',
+  ACCENT_TEXT: '#13967A',
+  ACCENT_MUTED: '#E6F9F5',
 
   // Text
-  TEXT_PRIMARY: '#F0EDE6',
-  TEXT_SECONDARY: '#9C9885',
-  TEXT_TERTIARY: '#5C5A50',
+  TEXT_PRIMARY: '#1A2634',
+  TEXT_SECONDARY: '#5C7080',
+  TEXT_TERTIARY: '#9AAAB8',
 
-  // Success (Splitwise synced)
-  SUCCESS: '#4CAF7D',
-  SUCCESS_TEXT: '#6FCF97',
-  SUCCESS_MUTED: '#0F2018',
+  // Success
+  SUCCESS: '#1CC29F',
+  SUCCESS_TEXT: '#0D9E82',
+  SUCCESS_MUTED: '#E6F9F5',
 
-  // Error (not linked)
+  // Error
   ERROR: '#E05252',
-  ERROR_TEXT: '#F47F7F',
-  ERROR_MUTED: '#2A1010',
+  ERROR_TEXT: '#C0392B',
+  ERROR_MUTED: '#FDECEA',
 
-  // Info (linked)
-  INFO: '#5B9BD5',
-  INFO_TEXT: '#7BB8F0',
-  INFO_MUTED: '#101825',
+  // Info
+  INFO: '#3B86D8',
+  INFO_TEXT: '#2563AE',
+  INFO_MUTED: '#EBF3FC',
 
   // Misc
   WHITE: '#FFFFFF',
@@ -40,7 +40,7 @@ export const Colors = {
 
 export const Typography = {
   SCREEN_TITLE: { fontSize: 22, fontWeight: '700' as const, fontFamily: 'DMSans_700Bold' },
-  SECTION_HEADER: { fontSize: 13, fontWeight: '600' as const, fontFamily: 'DMSans_600SemiBold', letterSpacing: 0.8 },
+  SECTION_HEADER: { fontSize: 11, fontWeight: '600' as const, fontFamily: 'DMSans_600SemiBold', letterSpacing: 1.0 },
   LIST_TITLE: { fontSize: 15, fontWeight: '600' as const, fontFamily: 'DMSans_600SemiBold' },
   LIST_SUBTITLE: { fontSize: 13, fontWeight: '400' as const, fontFamily: 'DMSans_400Regular' },
   BODY: { fontSize: 14, fontWeight: '400' as const, fontFamily: 'DMSans_400Regular' },
@@ -62,20 +62,20 @@ export const Spacing = {
 } as const;
 
 export const Radius = {
-  CHIP: 4,
+  CHIP: 6,
   INPUT: 10,
-  CARD: 12,
-  BUTTON: 12,
+  CARD: 14,
+  BUTTON: 10,
   PILL: 20,
   FULL: 999,
 } as const;
 
 export const AvatarColors = [
-  { bg: '#3D2E1E', text: '#E8A020' },
-  { bg: '#1A2E20', text: '#4CAF7D' },
-  { bg: '#1A1E2E', text: '#5B9BD5' },
-  { bg: '#2E1A2E', text: '#C77DFF' },
-  { bg: '#2E1A1A', text: '#E05252' },
+  { bg: '#1CC29F', text: '#FFFFFF' },
+  { bg: '#3B86D8', text: '#FFFFFF' },
+  { bg: '#9B59B6', text: '#FFFFFF' },
+  { bg: '#E67E22', text: '#FFFFFF' },
+  { bg: '#E05252', text: '#FFFFFF' },
 ] as const;
 
 export const AvatarSizes = {
@@ -84,4 +84,21 @@ export const AvatarSizes = {
   MD: 32,
   LG: 36,
   XL: 40,
+} as const;
+
+export const Shadow = {
+  CARD: {
+    shadowColor: '#1A2634',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  SHEET: {
+    shadowColor: '#1A2634',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
+    elevation: 8,
+  },
 } as const;

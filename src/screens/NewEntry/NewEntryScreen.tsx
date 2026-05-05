@@ -97,7 +97,8 @@ export function NewEntryScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <View style={styles.container}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <AppText variant="SCREEN_TITLE" style={styles.heading}>New Day Entry</AppText>
 
       <TouchableOpacity style={styles.dateRow} onPress={() => setShowPicker(true)}>
@@ -205,19 +206,20 @@ export function NewEntryScreen() {
       </TouchableOpacity>
 
       <AppButton label="Save Entry" onPress={handleSave} loading={saving} style={styles.saveBtn} />
-
-      <DishPickerModal
-        visible={dishPickerRow !== null}
-        initial={dishPickerRow !== null ? mealRows[dishPickerRow]?.selections ?? [] : []}
-        onConfirm={(sels) => {
-          if (dishPickerRow !== null) {
-            updateRow(dishPickerRow, { selections: sels });
-          }
-          setDishPickerRow(null);
-        }}
-        onClose={() => setDishPickerRow(null)}
-      />
     </ScrollView>
+
+    <DishPickerModal
+      visible={dishPickerRow !== null}
+      initial={dishPickerRow !== null ? mealRows[dishPickerRow]?.selections ?? [] : []}
+      onConfirm={(sels) => {
+        if (dishPickerRow !== null) {
+          updateRow(dishPickerRow, { selections: sels });
+        }
+        setDishPickerRow(null);
+      }}
+      onClose={() => setDishPickerRow(null)}
+    />
+    </View>
   );
 }
 
@@ -259,11 +261,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   personList: {
-    backgroundColor: Colors.SURFACE,
-    borderRadius: 10,
+    backgroundColor: Colors.WHITE,
+    borderRadius: 12,
     marginTop: Spacing.XS,
     borderWidth: 1,
     borderColor: Colors.BORDER,
+    shadowColor: '#1A2634',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   personOption: {
     flexDirection: 'row',
