@@ -23,10 +23,16 @@ export function OwnerProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    SecureStore.getItemAsync(OWNER_KEY).then((val) => {
-      setIsOwner(val === 'true');
-      setLoaded(true);
-    });
+    SecureStore.getItemAsync(OWNER_KEY)
+      .then((val) => {
+        setIsOwner(val === 'true');
+      })
+      .catch(() => {
+        setIsOwner(false);
+      })
+      .finally(() => {
+        setLoaded(true);
+      });
   }, []);
 
   async function claimOwnership(pin: string): Promise<boolean> {

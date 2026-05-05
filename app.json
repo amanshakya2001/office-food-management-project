@@ -8,11 +8,6 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "scheme": "officefood",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1CC29F"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.officefood.manager",
@@ -39,7 +34,15 @@
       "expo-web-browser",
       "expo-secure-store",
       "expo-font",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#1CC29F"
+        }
+      ]
     ],
     "extra": {
       "splitwiseClientId": "f3axRU1AA75AlDkSzu9RERsbeSlRNSevc2lfdPy2",

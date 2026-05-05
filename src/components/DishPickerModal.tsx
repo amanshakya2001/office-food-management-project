@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Modal, View, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { AppText } from './ui/AppText';
 import { Colors, Spacing, Radius } from '../theme/tokens';
@@ -30,8 +31,8 @@ export function DishPickerModal({ visible, initial, onConfirm, onClose }: Props)
       setLoading(true);
       setError(null);
       getDishes()
-        .then(setDishes)
-        .catch((e) => setError(e.message))
+        .then((data) => { console.log('[DishPicker] loaded', data.length, 'dishes'); setDishes(data); })
+        .catch((e) => { console.error('[DishPicker] error', e.message); setError(e.message); })
         .finally(() => setLoading(false));
       const map = new Map<number, DishSelection>();
       initial.forEach((s) => map.set(s.dish.id, s));
@@ -73,7 +74,10 @@ export function DishPickerModal({ visible, initial, onConfirm, onClose }: Props)
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <View style={styles.sheet}>
           <View style={styles.header}>
             <AppText variant="LIST_TITLE">Select Dishes</AppText>
@@ -93,9 +97,24 @@ export function DishPickerModal({ visible, initial, onConfirm, onClose }: Props)
           {loading ? (
             <ActivityIndicator color={Colors.ACCENT} style={{ marginTop: Spacing.LG }} />
           ) : error ? (
-            <AppText variant="CAPTION" color={Colors.ERROR_TEXT} style={styles.empty}>
-              Failed to load dishes: {error}
-            </AppText>
+            <View style={styles.errorBox}>
+              <AppText variant="LIST_SUBTITLE" color={Colors.ERROR_TEXT} style={{ marginBottom: 4 }}>
+                Failed to load dishes
+              </AppText>
+              <AppText variant="CAPTION" color={Colors.TEXT_SECONDARY} style={{ marginBottom: Spacing.MD }}>
+                {error}
+              </AppText>
+              <TouchableOpacity onPress={() => {
+                setLoading(true);
+                setError(null);
+                getDishes()
+                  .then(setDishes)
+                  .catch((e) => setError(e.message))
+                  .finally(() => setLoading(false));
+              }} style={styles.retryBtn}>
+                <AppText variant="BADGE" color={Colors.ACCENT_TEXT}>Retry</AppText>
+              </TouchableOpacity>
+            </View>
           ) : filtered.length === 0 ? (
             <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY} style={styles.empty}>
               {dishes.length === 0 ? 'No dishes yet. Ask admin to add dishes.' : 'No matches.'}
@@ -149,7 +168,7 @@ export function DishPickerModal({ visible, initial, onConfirm, onClose }: Props)
             </AppText>
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -171,8 +190,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: Spacing.MD,
-    paddingBottom: Spacing.XXL,
-    height: '80%',
+    maxHeight: '80%',
+    flex: 1,
     shadowColor: '#1A2634',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.12,
@@ -207,6 +226,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: Spacing.LG,
     paddingHorizontal: Spacing.LG,
+  },
+  errorBox: {
+    marginTop: Spacing.LG,
+    marginHorizontal: Spacing.LG,
+    padding: Spacing.MD,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    alignItems: 'center',
+  },
+  retryBtn: {
+    paddingHorizontal: Spacing.MD,
+    paddingVertical: Spacing.SM,
+    borderRadius: Radius.PILL,
+    borderWidth: 1,
+    borderColor: Colors.ACCENT,
+    backgroundColor: Colors.ACCENT_MUTED,
   },
   row: {
     flexDirection: 'row',
@@ -261,6 +298,7 @@ const styles = StyleSheet.create({
   confirmBtn: {
     marginHorizontal: Spacing.LG,
     marginTop: Spacing.MD,
+    marginBottom: Spacing.XXL,
     backgroundColor: Colors.ACCENT,
     borderRadius: Radius.BUTTON,
     paddingVertical: Spacing.MD,

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, ScrollView, StyleSheet, TouchableOpacity, Alert, Modal, TextInput, Switch, ActivityIndicator,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '../../components/ui/AppText';
@@ -130,7 +131,10 @@ export function AdminScreen() {
 
       {/* Add / Edit modal */}
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.overlay}>
+        <KeyboardAvoidingView
+          style={styles.overlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.sheet}>
             <AppText variant="LIST_TITLE" style={{ marginBottom: Spacing.MD }}>
               {editing ? 'Edit Dish' : 'New Dish'}
@@ -173,7 +177,7 @@ export function AdminScreen() {
               />
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

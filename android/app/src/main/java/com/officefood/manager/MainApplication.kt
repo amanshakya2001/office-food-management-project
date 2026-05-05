@@ -6,28 +6,21 @@ import android.content.res.Configuration
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
+import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
 import com.facebook.react.ReactHost
-import com.facebook.react.ReactNativeHost
 import com.facebook.react.common.ReleaseLevel
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
-import com.facebook.react.defaults.DefaultReactNativeHost
 
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ExpoReactHostFactory
 
 class MainApplication : Application(), ReactApplication {
 
-  @Suppress("DEPRECATION")
-  override val reactNativeHost: ReactNativeHost by lazy {
-    object : DefaultReactNativeHost(this@MainApplication) {
-      override fun getPackages(): List<ReactPackage> = PackageList(this).packages
-      override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
-      override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
-      override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
-      override val isHermesEnabled: Boolean = BuildConfig.IS_HERMES_ENABLED
-    }
-  }
+  // RN 0.81 still requires this abstract val on ReactApplication even though it's deprecated.
+  // New Architecture is enabled, so the runtime uses reactHost below; this is never called.
+  override val reactNativeHost: ReactNativeHost
+    get() = throw UnsupportedOperationException("Use reactHost (New Architecture)")
 
   override val reactHost: ReactHost by lazy {
     ExpoReactHostFactory.getDefaultReactHost(
