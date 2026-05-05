@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Office Food Manager",
+    "name": "Food Log",
     "slug": "office-food-manager",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F0E0C"
+      "backgroundColor": "#1CC29F"
     },
     "ios": {
       "supportsTablet": false,
@@ -26,7 +26,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#E8A020"
+        "backgroundColor": "#1CC29F"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.officefood.manager"
