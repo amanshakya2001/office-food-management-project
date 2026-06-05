@@ -1,7 +1,7 @@
 IPHONE_UDID := 00008110-00010480029A201E
 SIMULATOR_UDID := FB50A570-9F2F-448A-BDC0-1BC6B2F60A50
 
-.PHONY: install ios ios-release android simulator open-sim push
+.PHONY: install ios ios-release android simulator open-sim push apk
 
 # Install dependencies
 install:
@@ -24,6 +24,12 @@ ios-release:
 # Run on Android
 android:
 	npx expo run:android
+
+# Build release APK and copy to Desktop as FoodLog.apk
+apk:
+	JAVA_HOME=$$(/usr/libexec/java_home -v 21) npx expo run:android --variant release --no-bundler
+	cp android/app/build/outputs/apk/release/app-release.apk ~/Desktop/FoodLog.apk
+	@echo "APK copied to ~/Desktop/FoodLog.apk"
 
 # Start Metro bundler only
 start:

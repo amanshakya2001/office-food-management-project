@@ -9,12 +9,14 @@ import { Avatar } from '../../components/ui/Avatar';
 import { Divider } from '../../components/ui/Divider';
 import { Colors, Spacing } from '../../theme/tokens';
 import { getDayEntryById, deleteDayEntry } from '../../db/repositories/dayEntryRepository';
-import { getMealEntriesByDayEntry, deleteMealEntry } from '../../db/repositories/mealEntryRepository';
+import { getMealEntriesByDayEntry, deleteMealEntry, setMealEntryDishes } from '../../db/repositories/mealEntryRepository';
+import { DishPickerModal, DishSelection, selectionsToDescription } from '../../components/DishPickerModal';
 import { getPersonById } from '../../db/repositories/personRepository';
-import { DayEntry, MealEntry, Person } from '../../types/models';
+import { DayEntry, MealEntryWithDishes, Person } from '../../types/models';
 import { formatDisplayDate } from '../../services/dateUtils';
 import { buildWhatsAppMessage, shareOnWhatsApp } from '../../services/whatsappService';
 import { syncToSplitwise } from '../../services/splitwiseSync';
+import { calculateSplit, roundOwedShares } from '../../services/splitCalculator';
 import { useOwner } from '../../context/OwnerContext';
 import { HomeStackParamList } from '../../navigation/types';
 
@@ -28,9 +30,10 @@ export function DayDetailScreen() {
   const { isOwner } = useOwner();
 
   const [dayEntry, setDayEntry] = useState<DayEntry | null>(null);
-  const [meals, setMeals] = useState<(MealEntry & { person: Person })[]>([]);
+  const [meals, setMeals] = useState<MealEntryWithDishes[]>([]);
   const [payer, setPayer] = useState<Person | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [retagMealId, setRetagMealId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const entry = await getDayEntryById(dayEntryId);
@@ -102,6 +105,21 @@ export function DayDetailScreen() {
     await shareOnWhatsApp(message);
   }
 
+  async function handleRetagConfirm(selections: DishSelection[]) {
+    if (retagMealId === null) return;
+    try {
+      await setMealEntryDishes(
+        retagMealId,
+        selections.map((s) => ({ dishId: s.dish.id, qty: s.qty })),
+        selectionsToDescription(selections)
+      );
+      setRetagMealId(null);
+      await load();
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    }
+  }
+
   async function handleDeleteMeal(mealId: number) {
     if (!isOwner) return;
     Alert.alert('Remove meal?', 'This cannot be undone.', [
@@ -129,10 +147,11 @@ export function DayDetailScreen() {
     (m, i, arr) => arr.findIndex((x) => x.person_id === m.person_id) === i
   ).map((m) => m.person);
 
-  const perShare =
-    dayEntry.total_cost !== null && uniqueParticipants.length > 0
-      ? dayEntry.total_cost / uniqueParticipants.length
+  const splitResult =
+    dayEntry.total_cost !== null && meals.length > 0
+      ? calculateSplit(dayEntry.total_cost, meals)
       : null;
+  const roundedShares = splitResult ? roundOwedShares(splitResult) : null;
 
   const canSync =
     isOwner &&
@@ -141,6 +160,7 @@ export function DayDetailScreen() {
     uniqueParticipants.every((p) => p.splitwise_user_id);
 
   return (
+    <>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.titleRow}>
         <AppText variant="SCREEN_TITLE">{formatDisplayDate(dayEntry.date)}</AppText>
@@ -171,22 +191,35 @@ export function DayDetailScreen() {
         MEALS
       </AppText>
 
-      {meals.map((meal) => (
-        <View key={meal.id} style={styles.mealRow}>
-          <View style={styles.mealLeft}>
-            <Avatar name={meal.person.name} size="SM" />
-            <View style={{ marginLeft: Spacing.SM, flex: 1 }}>
-              <AppText variant="CAPTION" color={Colors.TEXT_SECONDARY}>{meal.person.name}</AppText>
-              <AppText variant="MEAL_DESCRIPTION">{meal.meal_description}</AppText>
+      {meals.map((meal) => {
+        const untagged = meal.dishes.length === 0;
+        return (
+          <View key={meal.id} style={styles.mealRow}>
+            <View style={styles.mealLeft}>
+              <Avatar name={meal.person.name} size="SM" />
+              <View style={{ marginLeft: Spacing.SM, flex: 1 }}>
+                <AppText variant="CAPTION" color={Colors.TEXT_SECONDARY}>{meal.person.name}</AppText>
+                <AppText variant="MEAL_DESCRIPTION">{meal.meal_description}</AppText>
+                {untagged && isOwner && (
+                  <TouchableOpacity
+                    style={styles.tagBtn}
+                    onPress={() => setRetagMealId(meal.id)}
+                  >
+                    <AppText variant="BADGE" color={Colors.ACCENT_TEXT}>
+                      ⚠ Tag dishes for fair split
+                    </AppText>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
+            {isOwner && (
+              <TouchableOpacity onPress={() => handleDeleteMeal(meal.id)}>
+                <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY}>✕</AppText>
+              </TouchableOpacity>
+            )}
           </View>
-          {isOwner && (
-            <TouchableOpacity onPress={() => handleDeleteMeal(meal.id)}>
-              <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY}>✕</AppText>
-            </TouchableOpacity>
-          )}
-        </View>
-      ))}
+        );
+      })}
 
       <Divider />
 
@@ -201,17 +234,68 @@ export function DayDetailScreen() {
             {dayEntry.total_cost !== null ? `₹${dayEntry.total_cost.toFixed(2)}` : '—'}
           </AppText>
         </View>
-        {perShare !== null && (
-          <View style={styles.costRow}>
-            <AppText variant="LIST_SUBTITLE" color={Colors.TEXT_SECONDARY}>Per person ({uniqueParticipants.length})</AppText>
-            <AppText variant="LIST_TITLE" color={Colors.TEXT_PRIMARY}>₹{perShare.toFixed(2)}</AppText>
-          </View>
+        {splitResult && (
+          <>
+            <View style={styles.costRow}>
+              <AppText variant="LIST_SUBTITLE" color={Colors.TEXT_SECONDARY}>Priced items</AppText>
+              <AppText variant="LIST_TITLE" color={Colors.TEXT_PRIMARY}>₹{splitResult.pricedSum.toFixed(2)}</AppText>
+            </View>
+            <View style={styles.costRow}>
+              <AppText variant="LIST_SUBTITLE" color={Colors.TEXT_SECONDARY}>
+                Shared pool{splitResult.totalSharedWeight > 0 ? ` (total weight ${splitResult.totalSharedWeight.toFixed(1)})` : ''}
+              </AppText>
+              <AppText variant="LIST_TITLE" color={Colors.TEXT_PRIMARY}>₹{splitResult.sharedPool.toFixed(2)}</AppText>
+            </View>
+            {splitResult.overage > 0 && (
+              <View style={styles.costRow}>
+                <AppText variant="LIST_SUBTITLE" color={Colors.ERROR_TEXT}>Priced exceeds total by</AppText>
+                <AppText variant="LIST_TITLE" color={Colors.ERROR_TEXT}>₹{splitResult.overage.toFixed(2)}</AppText>
+              </View>
+            )}
+          </>
         )}
         <View style={styles.costRow}>
           <AppText variant="LIST_SUBTITLE" color={Colors.TEXT_SECONDARY}>Paid by</AppText>
           <AppText variant="LIST_TITLE" color={Colors.TEXT_PRIMARY}>{payer?.name ?? '—'}</AppText>
         </View>
       </View>
+
+      {roundedShares && roundedShares.length > 0 && (
+        <>
+          <AppText variant="SECTION_HEADER" color={Colors.TEXT_TERTIARY} style={styles.sectionLabel}>
+            BREAKDOWN
+          </AppText>
+          <View style={styles.costSection}>
+            {roundedShares.map((r, idx) => {
+              const detail = splitResult!.splits[idx];
+              const parts: string[] = [];
+              if (detail.priced > 0) parts.push(`priced ₹${detail.priced.toFixed(2)}`);
+              if (detail.shared > 0) {
+                parts.push(`shared ₹${detail.shared.toFixed(2)} (w ${detail.sharedWeight.toFixed(1)})`);
+              }
+              if (detail.overageCredit > 0) parts.push(`− ₹${detail.overageCredit.toFixed(2)} credit`);
+              return (
+                <View key={r.person.id} style={styles.breakdownRow}>
+                  <View style={styles.breakdownLeft}>
+                    <Avatar name={r.person.name} size="XS" />
+                    <View style={{ marginLeft: Spacing.SM, flex: 1 }}>
+                      <AppText variant="LIST_SUBTITLE">{r.person.name}</AppText>
+                      {parts.length > 0 && (
+                        <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY}>
+                          {parts.join(' + ')}
+                        </AppText>
+                      )}
+                    </View>
+                  </View>
+                  <AppText variant="LIST_TITLE" color={Colors.ACCENT_TEXT}>
+                    ₹{r.owed.toFixed(2)}
+                  </AppText>
+                </View>
+              );
+            })}
+          </View>
+        </>
+      )}
 
       {isOwner && (
         <>
@@ -253,6 +337,21 @@ export function DayDetailScreen() {
         </>
       )}
     </ScrollView>
+
+    <DishPickerModal
+      visible={retagMealId !== null}
+      initial={
+        retagMealId !== null
+          ? (meals.find((m) => m.id === retagMealId)?.dishes ?? []).map((d) => ({
+              dish: { ...d.dish, created_at: '' },
+              qty: d.qty,
+            }))
+          : []
+      }
+      onConfirm={handleRetagConfirm}
+      onClose={() => setRetagMealId(null)}
+    />
+    </>
   );
 }
 
@@ -306,6 +405,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: Spacing.SM,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.SM,
+  },
+  breakdownLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  tagBtn: {
+    marginTop: Spacing.XS,
+    alignSelf: 'flex-start',
+    paddingHorizontal: Spacing.SM,
+    paddingVertical: Spacing.XS,
+    borderRadius: 8,
+    backgroundColor: Colors.ACCENT_MUTED,
+    borderWidth: 1,
+    borderColor: Colors.ACCENT,
   },
   syncHint: {
     marginTop: Spacing.SM,

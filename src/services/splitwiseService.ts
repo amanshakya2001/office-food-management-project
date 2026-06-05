@@ -72,17 +72,23 @@ export interface ExpenseShare {
   owed_share: string;
 }
 
+// Splitwise category 13 = "Dining out" (subcategory of "Food and drink")
+const FOOD_CATEGORY_ID = 13;
+
 export async function createExpense(
   groupId: number,
   description: string,
   cost: number,
-  shares: ExpenseShare[]
+  shares: ExpenseShare[],
+  date: string
 ): Promise<any> {
   const body: Record<string, any> = {
     cost: cost.toFixed(2),
     description,
     group_id: groupId,
     currency_code: 'INR',
+    category_id: FOOD_CATEGORY_ID,
+    date: `${date}T12:00:00Z`,
   };
   shares.forEach((s, i) => {
     body[`users__${i}__user_id`] = s.user_id;
@@ -98,13 +104,16 @@ export async function updateExpense(
   groupId: number,
   description: string,
   cost: number,
-  shares: ExpenseShare[]
+  shares: ExpenseShare[],
+  date: string
 ): Promise<any> {
   const body: Record<string, any> = {
     cost: cost.toFixed(2),
     description,
     group_id: groupId,
     currency_code: 'INR',
+    category_id: FOOD_CATEGORY_ID,
+    date: `${date}T12:00:00Z`,
   };
   shares.forEach((s, i) => {
     body[`users__${i}__user_id`] = s.user_id;

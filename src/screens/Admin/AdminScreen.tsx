@@ -18,6 +18,8 @@ export function AdminScreen() {
   const [editing, setEditing] = useState<Dish | null>(null);
   const [name, setName] = useState('');
   const [isCountable, setIsCountable] = useState(false);
+  const [priceText, setPriceText] = useState('0');
+  const [weightText, setWeightText] = useState('1');
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
@@ -33,6 +35,8 @@ export function AdminScreen() {
     setEditing(null);
     setName('');
     setIsCountable(false);
+    setPriceText('0');
+    setWeightText('1');
     setModalVisible(true);
   }
 
@@ -40,6 +44,8 @@ export function AdminScreen() {
     setEditing(dish);
     setName(dish.name);
     setIsCountable(dish.is_countable);
+    setPriceText(String(dish.price ?? 0));
+    setWeightText(String(dish.weight ?? 1));
     setModalVisible(true);
   }
 
@@ -48,12 +54,22 @@ export function AdminScreen() {
       Alert.alert('Required', 'Dish name cannot be empty.');
       return;
     }
+    const price = parseFloat(priceText);
+    if (Number.isNaN(price) || price < 0) {
+      Alert.alert('Invalid price', 'Price must be a non-negative number. Use 0 for shared/common dishes.');
+      return;
+    }
+    const weight = parseFloat(weightText);
+    if (Number.isNaN(weight) || weight < 0) {
+      Alert.alert('Invalid weight', 'Weight must be a non-negative number. 1.0 = one full meal unit.');
+      return;
+    }
     setSaving(true);
     try {
       if (editing) {
-        await updateDish(editing.id, name, isCountable);
+        await updateDish(editing.id, name, isCountable, price, weight);
       } else {
-        await createDish(name, isCountable);
+        await createDish(name, isCountable, price, weight);
       }
       setModalVisible(false);
       load();
@@ -112,6 +128,8 @@ export function AdminScreen() {
                   <AppText variant="LIST_TITLE">{dish.name}</AppText>
                   <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY}>
                     {dish.is_countable ? 'Countable (qty)' : 'Non-countable'}
+                    {dish.price > 0 ? ` · ₹${dish.price.toFixed(2)}` : ' · Shared'}
+                    {` · w ${dish.weight}`}
                   </AppText>
                 </View>
                 <View style={styles.rowActions}>
@@ -164,6 +182,36 @@ export function AdminScreen() {
                 thumbColor={Colors.TEXT_PRIMARY}
               />
             </View>
+
+            <AppText variant="CAPTION" color={Colors.TEXT_SECONDARY} style={styles.label}>
+              Price (₹) — leave 0 for shared dishes
+            </AppText>
+            <TextInput
+              style={styles.input}
+              placeholder="0"
+              placeholderTextColor={Colors.TEXT_TERTIARY}
+              value={priceText}
+              onChangeText={setPriceText}
+              keyboardType="decimal-pad"
+            />
+            <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY} style={{ marginTop: -Spacing.SM, marginBottom: Spacing.MD }}>
+              Priced dishes are charged directly to the eater. Shared (₹0) dishes are split among everyone who had a shared dish.
+            </AppText>
+
+            <AppText variant="CAPTION" color={Colors.TEXT_SECONDARY} style={styles.label}>
+              Weight (shared-pool size)
+            </AppText>
+            <TextInput
+              style={styles.input}
+              placeholder="1.0"
+              placeholderTextColor={Colors.TEXT_TERTIARY}
+              value={weightText}
+              onChangeText={setWeightText}
+              keyboardType="decimal-pad"
+            />
+            <AppText variant="CAPTION" color={Colors.TEXT_TERTIARY} style={{ marginTop: -Spacing.SM, marginBottom: Spacing.MD }}>
+              1.0 = one full meal unit. Roti 0.3, Dal 0.5, Rice/Sabzi 1.0. Used only to size the shared-pool split.
+            </AppText>
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>

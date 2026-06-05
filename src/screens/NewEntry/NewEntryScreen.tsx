@@ -86,6 +86,7 @@ export function NewEntryScreen() {
           dayEntryId: dayEntry!.id,
           personId: r.personId!,
           mealDescription: selectionsToDescription(r.selections),
+          dishes: r.selections.map((s) => ({ dishId: s.dish.id, qty: s.qty })),
         }))
       );
       navigation.replace('DayDetail', { dayEntryId: dayEntry.id });

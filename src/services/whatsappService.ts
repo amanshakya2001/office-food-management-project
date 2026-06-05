@@ -1,17 +1,14 @@
 import { Linking, Share, Platform } from 'react-native';
 import { formatDisplayDate } from './dateUtils';
-import { MealEntry, Person } from '../types/models';
+import { MealEntryWithDishes } from '../types/models';
 
 export function buildWhatsAppMessage(
   date: string,
-  meals: (MealEntry & { person: Person })[]
+  meals: MealEntryWithDishes[]
 ): string {
-  const header = `🍱 *${formatDisplayDate(date)}*`;
-  const lines = meals.map((m) => `• ${m.meal_description}`);
-  const total = meals.reduce((s, m) => s + (m.cost ?? 0), 0);
-  const parts = [header, ...lines];
-  if (total > 0) parts.push(`\n💰 Total: ₹${total.toFixed(0)}`);
-  return parts.join('\n');
+  const header = `🍱 ${formatDisplayDate(date)}`;
+  const lines = meals.map((m) => m.meal_description);
+  return [header, ...lines].join('\n');
 }
 
 export async function shareOnWhatsApp(message: string): Promise<void> {

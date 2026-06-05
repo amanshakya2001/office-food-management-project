@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Switch, Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { AppText } from '../../components/ui/AppText';
@@ -19,6 +20,14 @@ import {
   getSavedGroupId, saveGroupId, clearGroupId,
   getCurrentUser, getGroups, getGroup,
 } from '../../services/splitwiseService';
+import {
+  requestNotificationPermission,
+  scheduleLunchReminder,
+  cancelLunchReminder,
+  loadReminderSettings,
+  DEFAULT_HOUR,
+  DEFAULT_MINUTE,
+} from '../../services/notificationService';
 import { useOwner } from '../../context/OwnerContext';
 import { Person } from '../../types/models';
 import Constants from 'expo-constants';
@@ -45,6 +54,11 @@ export function SettingsScreen() {
   const [persons, setPersons] = useState<Person[]>([]);
   const [loadingAuth, setLoadingAuth] = useState(false);
   const [loadingGroups, setLoadingGroups] = useState(false);
+
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderHour, setReminderHour] = useState(DEFAULT_HOUR);
+  const [reminderMinute, setReminderMinute] = useState(DEFAULT_MINUTE);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const [, response, promptAsync] = AuthSession.useAuthRequest(
     {
@@ -79,13 +93,47 @@ export function SettingsScreen() {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => {
+    load();
+    loadReminderSettings().then(({ enabled, hour, minute }) => {
+      setReminderEnabled(enabled);
+      setReminderHour(hour);
+      setReminderMinute(minute);
+    });
+  }, [load]));
 
   useEffect(() => {
     if (response?.type === 'success') {
       handleAuthCode(response.params.code);
     }
   }, [response]);
+
+  async function handleToggleReminder(value: boolean) {
+    if (value) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        Alert.alert('Permission denied', 'Please enable notifications in your device settings.');
+        return;
+      }
+      await scheduleLunchReminder(reminderHour, reminderMinute);
+      setReminderEnabled(true);
+    } else {
+      await cancelLunchReminder();
+      setReminderEnabled(false);
+    }
+  }
+
+  async function handleTimeChange(_: any, selected?: Date) {
+    setShowTimePicker(Platform.OS === 'ios');
+    if (!selected) return;
+    const h = selected.getHours();
+    const m = selected.getMinutes();
+    setReminderHour(h);
+    setReminderMinute(m);
+    if (reminderEnabled) {
+      await scheduleLunchReminder(h, m);
+    }
+  }
 
   async function handleClaimOwnership() {
     setClaimingOwner(true);
@@ -390,7 +438,73 @@ export function SettingsScreen() {
             )}
           </>
         )}
+
+        {/* Notifications */}
+        <AppText variant="SECTION_HEADER" color={Colors.TEXT_TERTIARY} style={styles.sectionLabel}>
+          NOTIFICATIONS
+        </AppText>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <AppText variant="LIST_TITLE">Lunch reminder</AppText>
+              <AppText variant="LIST_SUBTITLE" color={Colors.TEXT_SECONDARY} style={{ marginTop: 2 }}>
+                Daily nudge to log today's food
+              </AppText>
+            </View>
+            <Switch
+              value={reminderEnabled}
+              onValueChange={handleToggleReminder}
+              trackColor={{ true: Colors.ACCENT, false: Colors.BORDER }}
+              thumbColor={Colors.WHITE}
+            />
+          </View>
+
+          {reminderEnabled && (
+            <>
+              <Divider style={{ marginVertical: Spacing.SM }} />
+              <TouchableOpacity style={styles.row} onPress={() => setShowTimePicker(true)}>
+                <AppText variant="LIST_SUBTITLE" color={Colors.TEXT_SECONDARY}>Reminder time</AppText>
+                <View style={styles.timeChip}>
+                  <AppText variant="LIST_TITLE" color={Colors.ACCENT_TEXT}>
+                    {String(reminderHour).padStart(2, '0')}:{String(reminderMinute).padStart(2, '0')}
+                  </AppText>
+                </View>
+              </TouchableOpacity>
+            </>
+          )}
+
+        </View>
       </ScrollView>
+
+      {showTimePicker && (
+        <Modal transparent animationType="slide" onRequestClose={() => setShowTimePicker(false)}>
+          <TouchableOpacity
+            style={styles.pickerOverlay}
+            activeOpacity={1}
+            onPress={() => setShowTimePicker(false)}
+          >
+            <View style={styles.pickerSheet}>
+              <View style={styles.pickerHeader}>
+                <AppText variant="LIST_TITLE">Set reminder time</AppText>
+                <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                  <AppText variant="BUTTON" color={Colors.ACCENT_TEXT}>Done</AppText>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.pickerWrapper}>
+                <DateTimePicker
+                  value={(() => { const d = new Date(); d.setHours(reminderHour, reminderMinute, 0, 0); return d; })()}
+                  mode="time"
+                  is24Hour
+                  display="spinner"
+                  onChange={handleTimeChange}
+                  style={{ width: '100%' }}
+                  themeVariant="light"
+                />
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -414,6 +528,14 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  timeChip: {
+    backgroundColor: Colors.ACCENT_MUTED,
+    paddingHorizontal: Spacing.MD,
+    paddingVertical: Spacing.XS,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.ACCENT,
+  },
   groupRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -442,4 +564,28 @@ const styles = StyleSheet.create({
   },
   memberChipSelected: { backgroundColor: Colors.ACCENT_MUTED, borderColor: Colors.ACCENT },
   unmapBtn: { paddingHorizontal: 8, paddingVertical: 3 },
+  pickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  pickerSheet: {
+    backgroundColor: Colors.WHITE,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: Spacing.XXL,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.LG,
+    paddingVertical: Spacing.MD,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.BORDER,
+  },
+  pickerWrapper: {
+    backgroundColor: Colors.WHITE,
+    paddingHorizontal: Spacing.LG,
+  },
 });

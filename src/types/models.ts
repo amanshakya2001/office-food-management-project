@@ -17,6 +17,19 @@ export interface DayEntry {
   created_at: string;
 }
 
+export interface DishLite {
+  id: number;
+  name: string;
+  is_countable: boolean;
+  price: number;
+  weight: number;
+}
+
+export interface MealEntryDish {
+  dish: DishLite;
+  qty: number;
+}
+
 export interface MealEntry {
   id: number;
   day_entry_id: number;
@@ -24,7 +37,12 @@ export interface MealEntry {
   meal_description: string;
 }
 
+export interface MealEntryWithDishes extends MealEntry {
+  person: Person;
+  dishes: MealEntryDish[];
+}
+
 export interface DayEntryWithDetails extends DayEntry {
-  meal_entries: (MealEntry & { person: Person })[];
+  meal_entries: MealEntryWithDishes[];
   paid_by_person: Person | null;
 }

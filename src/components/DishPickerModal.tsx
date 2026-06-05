@@ -130,16 +130,22 @@ export function DishPickerModal({ visible, initial, onConfirm, onClose }: Props)
                       <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
                         {selected && <AppText variant="CAPTION" color={Colors.BG}>✓</AppText>}
                       </View>
-                      <AppText
-                        variant="LIST_SUBTITLE"
-                        color={selected ? Colors.TEXT_PRIMARY : Colors.TEXT_SECONDARY}
-                        style={{ flex: 1 }}
-                      >
-                        {dish.name}
-                      </AppText>
+                      <View style={{ flex: 1 }}>
+                        <AppText
+                          variant="LIST_SUBTITLE"
+                          color={selected ? Colors.TEXT_PRIMARY : Colors.TEXT_SECONDARY}
+                        >
+                          {dish.name}
+                        </AppText>
+                        {dish.price > 0 && (
+                          <AppText variant="CAPTION" color={Colors.ACCENT_TEXT}>
+                            ₹{dish.price.toFixed(2)}{dish.is_countable ? ' each' : ''}
+                          </AppText>
+                        )}
+                      </View>
                     </TouchableOpacity>
 
-                    {selected && dish.is_countable && (
+                    {selected && (
                       <View style={styles.stepper}>
                         <TouchableOpacity style={styles.stepBtn} onPress={() => changeQty(dish, -1)}>
                           <AppText variant="LIST_TITLE" color={Colors.ACCENT_TEXT}>−</AppText>

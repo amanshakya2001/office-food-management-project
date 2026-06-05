@@ -1,12 +1,29 @@
 import { supabase } from '../../lib/supabase';
-import { MealEntry, Person } from '../../types/models';
+import { MealEntry, MealEntryWithDishes, MealEntryDish, DishLite } from '../../types/models';
+
+function normalizeDishLite(row: any): DishLite {
+  return {
+    id: row.id,
+    name: row.name,
+    is_countable: row.is_countable,
+    price: typeof row.price === 'string' ? parseFloat(row.price) : row.price ?? 0,
+    weight: typeof row.weight === 'string' ? parseFloat(row.weight) : row.weight ?? 1,
+  };
+}
+
+function normalizeDishes(rows: any[] | null | undefined): MealEntryDish[] {
+  return (rows ?? []).map((r) => ({
+    dish: normalizeDishLite(r.dish),
+    qty: r.qty,
+  }));
+}
 
 export async function getMealEntriesByDayEntry(
   dayEntryId: number
-): Promise<(MealEntry & { person: Person })[]> {
+): Promise<MealEntryWithDishes[]> {
   const { data, error } = await supabase
     .from('meal_entries')
-    .select('*, person:persons(*)')
+    .select('*, person:persons(*), meal_entry_dishes(qty, dish:dishes(id, name, is_countable, price, weight))')
     .eq('day_entry_id', dayEntryId)
     .order('id');
   if (error) throw new Error(error.message);
@@ -16,6 +33,7 @@ export async function getMealEntriesByDayEntry(
     person_id: row.person_id,
     meal_description: row.meal_description,
     person: row.person,
+    dishes: normalizeDishes(row.meal_entry_dishes),
   }));
 }
 
@@ -41,22 +59,73 @@ export async function updateMealEntry(id: number, mealDescription: string): Prom
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Replace all dish links for a meal entry. Also updates meal_description so
+ * the text label stays in sync with the structured dishes.
+ */
+export async function setMealEntryDishes(
+  mealEntryId: number,
+  dishes: { dishId: number; qty: number }[],
+  mealDescription: string
+): Promise<void> {
+  const { error: delError } = await supabase
+    .from('meal_entry_dishes')
+    .delete()
+    .eq('meal_entry_id', mealEntryId);
+  if (delError) throw new Error(delError.message);
+
+  if (dishes.length > 0) {
+    const { error: insError } = await supabase.from('meal_entry_dishes').insert(
+      dishes.map((d) => ({ meal_entry_id: mealEntryId, dish_id: d.dishId, qty: d.qty }))
+    );
+    if (insError) throw new Error(insError.message);
+  }
+
+  const { error: updError } = await supabase
+    .from('meal_entries')
+    .update({ meal_description: mealDescription })
+    .eq('id', mealEntryId);
+  if (updError) throw new Error(updError.message);
+}
+
 export async function deleteMealEntry(id: number): Promise<void> {
   const { error } = await supabase.from('meal_entries').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
 
-export async function bulkCreateMealEntries(
-  entries: { dayEntryId: number; personId: number; mealDescription: string }[]
-): Promise<void> {
-  const { error } = await supabase.from('meal_entries').insert(
-    entries.map((e) => ({
-      day_entry_id: e.dayEntryId,
-      person_id: e.personId,
-      meal_description: e.mealDescription,
-    }))
-  );
+export interface MealEntryInput {
+  dayEntryId: number;
+  personId: number;
+  mealDescription: string;
+  dishes: { dishId: number; qty: number }[];
+}
+
+export async function bulkCreateMealEntries(entries: MealEntryInput[]): Promise<void> {
+  if (entries.length === 0) return;
+
+  const { data: inserted, error } = await supabase
+    .from('meal_entries')
+    .insert(
+      entries.map((e) => ({
+        day_entry_id: e.dayEntryId,
+        person_id: e.personId,
+        meal_description: e.mealDescription,
+      }))
+    )
+    .select('id');
   if (error) throw new Error(error.message);
+
+  const dishLinks: { meal_entry_id: number; dish_id: number; qty: number }[] = [];
+  (inserted ?? []).forEach((row: any, idx: number) => {
+    entries[idx].dishes.forEach((d) => {
+      dishLinks.push({ meal_entry_id: row.id, dish_id: d.dishId, qty: d.qty });
+    });
+  });
+
+  if (dishLinks.length > 0) {
+    const { error: linkError } = await supabase.from('meal_entry_dishes').insert(dishLinks);
+    if (linkError) throw new Error(linkError.message);
+  }
 }
 
 export async function getMealEntriesForExport(
